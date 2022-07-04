@@ -7,40 +7,34 @@ import org.bukkit.event.HandlerList
 import org.bukkit.inventory.ItemStack
 
 class WeaponStartHoldingEvent(
-    val player: WeaponPlayer,
+    player: WeaponPlayer,
     val oldWeapon: Weapon?,
     val oldItem: ItemStack?,
     val newWeapon: Weapon,
     val newItem: ItemStack,
-) : Event() {
+) : WeaponPlayerEvent(player) {
 
+    override val weapon: Weapon
+        get() = newWeapon
     companion object {
         private val handlers = HandlerList()
+        @JvmStatic fun getHandlerList() = Companion.handlers
     }
-    override fun getHandlers(): HandlerList {
-        return Companion.handlers
-    }
+    override fun getHandlers(): HandlerList = Companion.handlers
 
-    fun getHandlerList(): HandlerList {
-        return Companion.handlers
-    }
 }
 class WeaponEndHoldingEvent(
-    val player: WeaponPlayer,
+    player: WeaponPlayer,
     val oldWeapon: Weapon,
     val oldItem: ItemStack?,
     val newWeapon: Weapon?,
     val newItem: ItemStack?
-) : Event() {
-
+) : WeaponPlayerEvent(player) {
+    override val weapon: Weapon
+        get() = oldWeapon
     companion object {
         private val handlers = HandlerList()
+        @JvmStatic fun getHandlerList() = Companion.handlers
     }
-    override fun getHandlers(): HandlerList {
-        return Companion.handlers
-    }
-
-    fun getHandlerList(): HandlerList {
-        return Companion.handlers
-    }
+    override fun getHandlers(): HandlerList = Companion.handlers
 }

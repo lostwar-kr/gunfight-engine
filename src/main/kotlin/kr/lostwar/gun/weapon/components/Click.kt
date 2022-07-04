@@ -1,41 +1,64 @@
 package kr.lostwar.gun.weapon.components
 
-import kr.lostwar.gun.weapon.WeaponComponent
-import kr.lostwar.gun.weapon.WeaponPlayer
-import kr.lostwar.gun.weapon.WeaponPlayerEventListener
-import kr.lostwar.gun.weapon.WeaponType
+import kr.lostwar.gun.weapon.*
+import kr.lostwar.gun.weapon.actions.DelayAction
+import kr.lostwar.gun.weapon.event.WeaponClickEvent
+import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import org.bukkit.GameMode
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Event
+import org.bukkit.event.EventPriority
 import org.bukkit.event.block.Action
 import org.bukkit.event.inventory.ClickType
-import org.bukkit.event.player.PlayerArmorStandManipulateEvent
-import org.bukkit.event.player.PlayerInteractAtEntityEvent
-import org.bukkit.event.player.PlayerInteractEntityEvent
-import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.*
+import java.util.*
+import kotlin.collections.HashSet
 
 class Click(
     config: ConfigurationSection?,
     weapon: WeaponType,
     parent: Click?,
-) : WeaponComponent(config, weapon, parent) {
+) : WeaponComponent(config, weapon, parent, true) {
 
     val invert: Boolean = getBoolean("invert", parent?.invert, false)
 
+    private val ignoreLeftClick = HashSet<UUID>()
     override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+        // 무기 버릴 시 ArmSwing 발생해서 LEFT_CLICK 처리되는 버그 해결
+        WeaponPlayerEventListener(PlayerDropItemEvent::class.java, EventPriority.MONITOR) { event ->
+            val weapon = this.weapon ?: return@WeaponPlayerEventListener
+            event.isCancelled = true
+            ignoreLeftClick.add(weapon.id)
+            weapon.addBackgroundAction(object : DelayAction(weapon, 1) {
+                override fun onEnd() {
+                    ignoreLeftClick.remove(weapon.id)
+                }
+            })
+        },
         WeaponPlayerEventListener(PlayerInteractEvent::class.java) { event ->
             if(player.gameMode == GameMode.SPECTATOR) return@WeaponPlayerEventListener
-            val clickType = when(event.action) {
-                Action.LEFT_CLICK_AIR, Action.LEFT_CLICK_BLOCK -> if(!invert) ClickType.LEFT else ClickType.RIGHT
-                Action.RIGHT_CLICK_AIR, Action.RIGHT_CLICK_BLOCK -> if(!invert) ClickType.RIGHT else ClickType.LEFT
+            val rawClickType = when(event.action) {
+                Action.LEFT_CLICK_AIR, Action.LEFT_CLICK_BLOCK -> ClickType.LEFT
+                Action.RIGHT_CLICK_AIR, Action.RIGHT_CLICK_BLOCK -> ClickType.RIGHT
                 else -> return@WeaponPlayerEventListener
             }
-            onClick(clickType)
+
+            if(rawClickType == ClickType.LEFT && this.weapon?.id in ignoreLeftClick) {
+                return@WeaponPlayerEventListener
+            }
+            val clickType = if(!invert) rawClickType else when(rawClickType) {
+                ClickType.LEFT -> ClickType.RIGHT
+                ClickType.RIGHT -> ClickType.LEFT
+                else -> return@WeaponPlayerEventListener
+            }
+            onClick(rawClickType)
         },
+        /*
         WeaponPlayerEventListener(PlayerInteractAtEntityEvent::class.java) {
             if(player.gameMode == GameMode.SPECTATOR) return@WeaponPlayerEventListener
             onClick(ClickType.RIGHT)
         },
+        */
         WeaponPlayerEventListener(PlayerInteractEntityEvent::class.java) {
             if(player.gameMode == GameMode.SPECTATOR) return@WeaponPlayerEventListener
             onClick(ClickType.RIGHT)
@@ -47,7 +70,6 @@ class Click(
     )
 
     private fun WeaponPlayer.onClick(clickType: ClickType) {
-        val weapon = weapon ?: return
-
+        WeaponClickEvent(this, clickType).callEventOnHoldingWeapon()
     }
 }

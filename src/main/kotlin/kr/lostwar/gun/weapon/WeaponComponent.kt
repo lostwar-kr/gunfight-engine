@@ -2,7 +2,8 @@ package kr.lostwar.gun.weapon
 
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.components.*
-import kr.lostwar.util.SoundInfo
+import kr.lostwar.util.AnimationClip
+import kr.lostwar.util.SoundClip
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
 import org.bukkit.configuration.ConfigurationSection
@@ -24,6 +25,7 @@ abstract class WeaponComponent(
             Burst::class.java,
             SelectorLever::class.java,
             Click::class.java,
+            Shoot::class.java,
         )
         val registeredComponents by lazy { components.toList() }
         val registeredComponentsWithConstructor by lazy {
@@ -110,19 +112,18 @@ abstract class WeaponComponent(
     protected fun getItemData(key: String, parentDef: ItemData?, def: ItemData? = null): ItemData? {
         return get(key, parentDef, def) { k -> getItemData(k, null) }
     }
-    protected fun getSounds(key: String, parentDef: List<SoundInfo>?, def: List<SoundInfo> = emptyList()): List<SoundInfo> {
-        return get(key, parentDef, def) { k -> if(isList(k)) SoundInfo.parse(getStringList(k)) else null }!!
+    protected fun getSoundClip(key: String, parentDef: SoundClip?, def: SoundClip = SoundClip.emptyClip): SoundClip {
+        return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
+    }
+    protected fun getAnimationClip(key: String, parentDef: AnimationClip?, def: AnimationClip = AnimationClip.emptyClip): AnimationClip {
+        return get(key, parentDef, def) { k -> if(isList(k)) AnimationClip.parse(getStringList(k)) else null }!!
     }
 
     fun lateInit() {
-        listeners.forEach { listener ->
-            weapon.listeners
-                    // 없으면 리스트 생성
-                .computeIfAbsent(listener.clazz) { mutableListOf() }
-                    // 리스트에 넣기
-                .add(listener as WeaponPlayerEventListener<Event>)
-        }
+//        GunEngine.log("registering component ${name} listeners ...")
+        weapon.registerListeners(listeners)
         onLateInit()
     }
     protected open fun onLateInit() {}
+    open fun onInstantiate(weapon: Weapon) {}
 }

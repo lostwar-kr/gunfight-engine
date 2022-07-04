@@ -2,6 +2,7 @@ package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponComponent
+import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.util.item.ItemBuilder
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemUtil.applyItemMeta
@@ -11,6 +12,8 @@ import kr.lostwar.util.ui.text.StringUtil.mapColored
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.event.Event
+import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.CrossbowMeta
 
@@ -29,6 +32,7 @@ class Item(
     val lore: List<String> = getStringList("lore", parent?.lore, emptyList())
     val itemData: ItemData = getItemData("type", parent?.itemData, defaultItemType)!!
 
+    val useAnimation: Boolean = getBoolean("useAnimation", parent?.useAnimation, true)
     val useCrossbowMotion: Boolean = getBoolean("useCrossbowMotion", parent?.useCrossbowMotion, false)
     val crossbowData: Int = getInt("crossbowData", itemData.data)
 
@@ -49,6 +53,8 @@ class Item(
                 setLore(lore.mapColored())
             }
         }
+        isUnbreakable = true
+        addItemFlags(*ItemFlag.values())
     }
     val crossbow: ItemBuilder = ItemBuilder(Material.CROSSBOW, crossbowData).applyMeta<ItemBuilder, CrossbowMeta> {
         addChargedProjectile(ItemStack(Material.ARROW))
@@ -57,5 +63,9 @@ class Item(
     companion object {
         val defaultItemType = ItemData(Material.STONE_PICKAXE, 1)
     }
+
+    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+
+    )
 
 }

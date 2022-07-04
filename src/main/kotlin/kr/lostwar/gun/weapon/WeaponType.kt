@@ -6,11 +6,13 @@ import kr.lostwar.gun.weapon.components.*
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.Config
-import kr.lostwar.util.item.ItemUtil.applyItemMeta
+import kr.lostwar.util.logErrorNull
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.event.Cancellable
 import org.bukkit.event.Event
-import org.bukkit.inventory.ItemFlag
+import org.bukkit.event.EventPriority
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.util.*
@@ -43,20 +45,38 @@ class WeaponType(
         return components[clazz.index] != null
     }
 
-    val listeners = HashMap<Class<out Event>, MutableList<WeaponPlayerEventListener<Event>>>()
+    val listenerHandler = HashMap<Class<out Event>, SortedSet<WeaponPlayerEventListener<Event>>>()
+    fun registerListeners(listeners: List<WeaponPlayerEventListener<out Event>>) {
+        listeners.forEach { listener ->
+            GunEngine.log("- ${listener.clazz}")
+            listenerHandler
+                // 없으면 리스트 생성
+                .computeIfAbsent(listener.clazz) { TreeSet(compareBy { it.priority }) }
+                // 리스트에 넣기
+                .add(listener as WeaponPlayerEventListener<Event>)
+        }
+    }
     private val weaponTypeListeners = listOf(
-        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java) {event ->
-            val weapon = weapon ?: return@WeaponPlayerEventListener
+        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.LOWEST) { event ->
+            val weapon = event.weapon
             with(weapon) { onStartHolding(event) }
         },
-        WeaponPlayerEventListener(WeaponEndHoldingEvent::class.java) {event ->
-            val weapon = weapon ?: return@WeaponPlayerEventListener
+        WeaponPlayerEventListener(WeaponEndHoldingEvent::class.java, priority = EventPriority.LOWEST) {event ->
+            val weapon = event.weapon
             with(weapon) { onEndHolding(event) }
         },
     )
     inline fun <reified T : Event> callEvent(weaponPlayer: WeaponPlayer, event: T) {
-        val list = listeners[T::class.java] ?: return
-        list.forEach { it.callEvent(weaponPlayer, event) }
+        GunEngine.log("callEvent(${weaponPlayer.player}, ${T::class.java.simpleName})")
+        val list = listenerHandler[T::class.java] ?: return
+        GunEngine.log("listener list: [${list.size}]")
+        val cancellable = event as? Cancellable ?: WeaponPlayerEventListener.notCancelled
+        for(listener in list) {
+            if(listener.ignoreCancelled && cancellable.isCancelled) {
+                continue
+            }
+            listener.callEvent(weaponPlayer, event)
+        }
     }
 
     lateinit var item: Item; private set
@@ -64,12 +84,14 @@ class WeaponType(
     var fullAuto: FullAuto? = null; private set
     var burst: Burst? = null; private set
     lateinit var selectorLever: SelectorLever; private set
+    var shoot: Shoot? = null; private set
     private fun registerComponentAliases() {
         item = getComponent(Item::class.java)!!
         burst = getComponent(Burst::class.java)
         fullAuto = getComponent(FullAuto::class.java)
         selectorLever = getComponent(SelectorLever::class.java)!!
         ammo = getComponent(Ammo::class.java)
+        shoot = getComponent(Shoot::class.java)
     }
 
     private fun load(parentWeapon: WeaponType?) {
@@ -106,13 +128,8 @@ class WeaponType(
             GunEngine.logWarn("무기 &e${key}&6(parent: &e${parentWeaponKey}&6)&r를 불러오는 데 실패")
             return
         }
-        weaponTypeListeners.forEach { listener ->
-            listeners
-                // 없으면 리스트 생성
-                .computeIfAbsent(listener.clazz) { mutableListOf() }
-                // 리스트에 넣기
-                .add(listener as WeaponPlayerEventListener<Event>)
-        }
+//        GunEngine.log("registering weapon type listeners ...")
+        registerListeners(weaponTypeListeners)
         enabledComponents = components.filterNotNull()
         enabledComponents.forEach {
             component -> component.lateInit()
@@ -179,8 +196,7 @@ class WeaponType(
 
         private fun register(key: String, section: ConfigurationSection, config: Config): WeaponType? {
             if (key in weaponsByKey) {
-                GunEngine.logWarn("중복 무기 key 발생: ${key}, ${config.file.path} 파일 불러오는 중 발생")
-                return null
+                return logErrorNull("중복 무기 key 발생: ${key}, ${config.file.path} 파일 불러오는 중 발생")
             }
 
             val weapon = WeaponType(key, section, config)
@@ -227,23 +243,10 @@ class WeaponType(
             }
             return count
         }
-
-        fun of(item: ItemStack): Pair<WeaponType, UUID>? {
-            if (!item.hasItemMeta()) return null
-            val meta = item.itemMeta
-            val itemContainer = meta.persistentDataContainer
-            val key = WeaponPropertyType.KEY[itemContainer] ?: return null
-            val uuid = WeaponPropertyType.ID[itemContainer] ?: return null
-            val info = get(key) ?: return null
-            return info to uuid
-        }
     }
 
     fun instantiate(): Pair<ItemStack, Weapon> {
-        val item = item.itemStack.applyItemMeta {
-            isUnbreakable = true
-            addItemFlags(*ItemFlag.values())
-        }
+        val item = item.itemStack
         val weapon = Weapon(this)
         weapon.storeTo(item)
         return item to weapon

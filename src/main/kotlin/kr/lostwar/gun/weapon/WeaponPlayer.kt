@@ -1,25 +1,18 @@
 package kr.lostwar.gun.weapon
 
 import com.destroystokyo.paper.event.server.ServerTickEndEvent
-import kr.lostwar.gun.weapon.WeaponPlayer.Companion.onInteract
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import net.kyori.adventure.text.Component
-import org.bukkit.GameMode
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.event.Event
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
-import org.bukkit.event.block.Action
-import org.bukkit.event.player.PlayerArmorStandManipulateEvent
-import org.bukkit.event.player.PlayerInteractAtEntityEvent
-import org.bukkit.event.player.PlayerInteractEntityEvent
-import org.bukkit.event.player.PlayerInteractEvent
-import org.bukkit.event.player.PlayerItemHeldEvent
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.event.player.*
 import org.bukkit.inventory.ItemStack
+import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 
 class WeaponPlayer(
@@ -28,17 +21,40 @@ class WeaponPlayer(
     var player = player.also { byUUID[it.uniqueId] = this }; private set
     override var weapon: Weapon? = null
         set(value) {
-            field?.holder = null
+            field?.player = null
             field = value
-            value?.holder = this
+            value?.player = this
         }
     var weaponItem: ItemStack? = null
+
+    private val playingAnimations = ArrayList<BukkitTask>()
+    private val playingSounds = ArrayList<BukkitTask>()
+
+    fun playAnimation(animationTask: BukkitTask?) = animationTask?.let { playingAnimations.add(it) }
+    fun playSound(soundTask: BukkitTask?) = soundTask?.let { playingSounds.add(it) }
+
+
+    fun stopAnimation() {
+        for(task in playingAnimations) {
+            if(!task.isCancelled) task.cancel()
+        }
+        playingAnimations.clear()
+    }
+    fun stopSound() {
+        for(task in playingSounds) {
+            if(!task.isCancelled) task.cancel()
+        }
+        playingSounds.clear()
+    }
 
     companion object : Listener {
         private val byUUID = HashMap<UUID, WeaponPlayer>()
 
+        val Player.weaponPlayer: WeaponPlayer; get() = get(this)
         operator fun get(player: Player): WeaponPlayer {
-            return byUUID[player.uniqueId]?.also { if(it.player != player) it.player = player } ?: return WeaponPlayer(player)
+            return byUUID[player.uniqueId]
+                ?. also { if(it.player != player) it.player = player }
+                ?: return WeaponPlayer(player)
         }
 
         @EventHandler
@@ -48,7 +64,7 @@ class WeaponPlayer(
 
         @EventHandler
         fun PlayerJoinEvent.onJoin() {
-            val player = WeaponPlayer[player]
+            val player = player.weaponPlayer
         }
 
         @EventHandler
@@ -60,35 +76,22 @@ class WeaponPlayer(
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
         fun PlayerItemHeldEvent.onItemHeld() {
 //            GunEngine.log("onItemHeld(${previousSlot} to ${newSlot})")
-            val weaponPlayer = WeaponPlayer[player]
+            val weaponPlayer = player.weaponPlayer
             weaponPlayer.updateCurrentWeapon(player.inventory.getItem(newSlot) ?: emptyItem)
         }
+        @EventHandler(priority = EventPriority.MONITOR)
+        fun PlayerInteractEvent.onInteract() = callEventOnWeaponPlayer(player)
+        @EventHandler
+        fun PlayerInteractEntityEvent.onInteractEntity() = callEventOnWeaponPlayer(player)
+        @EventHandler
+        fun PlayerInteractAtEntityEvent.onInteractEntity() = callEventOnWeaponPlayer(player)
+        @EventHandler
+        fun PlayerArmorStandManipulateEvent.onInteractEntity() = callEventOnWeaponPlayer(player)
+        @EventHandler
+        fun PlayerDropItemEvent.onDrop() = callEventOnWeaponPlayer(player)
 
-
-        @EventHandler
-        fun PlayerInteractEvent.onInteract() {
-            if(action == Action.PHYSICAL) return
-
-            val player = player
-            val weaponPlayer = WeaponPlayer[player]
-            weaponPlayer.weapon?.type?.callEvent(weaponPlayer, this)
-        }
-        @EventHandler
-        fun PlayerInteractEntityEvent.onInteractEntity() {
-            val player = player
-            val weaponPlayer = WeaponPlayer[player]
-            weaponPlayer.weapon?.type?.callEvent(weaponPlayer, this)
-        }
-        @EventHandler
-        fun PlayerInteractAtEntityEvent.onInteractEntity() {
-            val player = player
-            val weaponPlayer = WeaponPlayer[player]
-            weaponPlayer.weapon?.type?.callEvent(weaponPlayer, this)
-        }
-        @EventHandler
-        fun PlayerArmorStandManipulateEvent.onInteractEntity() {
-            val player = player
-            val weaponPlayer = WeaponPlayer[player]
+        private inline fun <reified T : Event> T.callEventOnWeaponPlayer(player: Player) {
+            val weaponPlayer = player.weaponPlayer
             weaponPlayer.weapon?.type?.callEvent(weaponPlayer, this)
         }
     }
@@ -101,15 +104,10 @@ class WeaponPlayer(
 
     private fun updateCurrentWeapon(newItem: ItemStack) {
         val oldWeapon = weapon
-        val oldWeaponType = oldWeapon?.type
-        val pair = WeaponType.of(newItem)
-        val newWeaponType = pair?.first
-        val newWeaponId = pair?.second
-        // 무기 종류가 다르거나, 종류는 같은데 ID가 다른 경우
+        val newWeapon = Weapon.takeOut(newItem)
 //        GunEngine.log("oldWeapon: ${oldWeapon}")
 //        GunEngine.log("newWeapon: ${newWeaponType}:${newWeaponId}")
-        if(oldWeaponType != newWeaponType || oldWeapon?.id != newWeaponId) {
-            val newWeapon = Weapon.takeOut(newItem)
+        if(oldWeapon != newWeapon) {
             this.weapon = newWeapon
             onChangeWeapon(oldWeapon, newWeapon, newItem)
 //            player.colorMessage("changed weapon from &8${oldWeapon}&r to &e${newWeapon}")
@@ -123,6 +121,8 @@ class WeaponPlayer(
         val oldItem = weaponItem
         if(old != null) {
             old.type.callEvent(this, WeaponEndHoldingEvent(this, old, oldItem, new, newItem))
+            stopAnimation()
+            stopSound()
             weaponItem = null
         }
         // 새로 드는 무기가 없을 경우

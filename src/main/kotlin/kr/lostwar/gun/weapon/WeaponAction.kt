@@ -3,17 +3,20 @@ package kr.lostwar.gun.weapon
 abstract class WeaponAction(
     val weapon: Weapon
 ) {
-
+    val player = weapon.player ?: error("WeaponAction created on ${weapon} but cannot find WeaponPlayer")
     var isRunning: Boolean = false
 
-    fun start() {
+    fun start(): Boolean {
+        if(isRunning) return false
         isRunning = true
         onStart()
+        return true
     }
-    fun end() {
-        if(!isRunning) return
+    fun end(): Boolean {
+        if(!isRunning) return false
         isRunning = false
         onEnd()
+        return true
     }
     fun tick() {
         onTick()

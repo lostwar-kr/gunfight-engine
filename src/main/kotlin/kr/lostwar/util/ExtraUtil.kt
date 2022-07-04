@@ -1,8 +1,16 @@
 package kr.lostwar.util
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.components.SelectorLever
 import org.bukkit.persistence.PersistentDataAdapterContext
 import org.bukkit.persistence.PersistentDataType
+
+inline fun <reified T> logErrorNull(message: String, stackTrace: Boolean = false): T? = run {
+    GunEngine.logWarn(message)
+    if(stackTrace)
+        Exception().stackTrace.forEach { GunEngine.logWarn(it.toString()) }
+    return null
+}
 
 object ExtraUtil {
 

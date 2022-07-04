@@ -1,8 +1,12 @@
 package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.GunEngine
+import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponComponent
+import kr.lostwar.gun.weapon.WeaponPropertyType
 import kr.lostwar.gun.weapon.WeaponType
+import kr.lostwar.util.ExtraUtil
+import kr.lostwar.util.SoundClip
 import kr.lostwar.util.SoundInfo
 import org.bukkit.configuration.ConfigurationSection
 
@@ -31,7 +35,7 @@ class SelectorLever(
     val useSelector: Boolean = getBoolean("useSelector", parent?.useSelector, false)
     val selectors: List<SelectorType>
     val defaultSelector: SelectorType
-    val leverSound: List<SoundInfo> = getSounds("leverSound", parent?.leverSound)
+    val leverSound: SoundClip = getSoundClip("leverSound", parent?.leverSound)
 
     init {
         if(!useSelector && parent?.useSelector != true) {
@@ -68,5 +72,16 @@ class SelectorLever(
         }
     }
 
+    override fun onInstantiate(weapon: Weapon) {
+        weapon.registerNotNull(SELECTOR, defaultSelector)
+    }
+    companion object {
+        private val SELECTOR_TYPE = ExtraUtil.EnumPersistentDataType(SelectorType::class.java)
+        private val SELECTOR = WeaponPropertyType("selector", SELECTOR_TYPE)
+
+        var Weapon.selector: SelectorType
+            get() = get(SELECTOR)!!
+            set(value) { set(SELECTOR, value) }
+    }
 
 }

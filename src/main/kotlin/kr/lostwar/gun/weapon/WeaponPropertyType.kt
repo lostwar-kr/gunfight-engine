@@ -1,6 +1,7 @@
 package kr.lostwar.gun.weapon
 
 import kr.lostwar.GunfightEngine
+import kr.lostwar.gun.weapon.WeaponPropertyType.Companion.get
 import kr.lostwar.gun.weapon.components.SelectorLever
 import kr.lostwar.util.ExtraUtil
 import org.bukkit.NamespacedKey
@@ -9,11 +10,12 @@ import org.bukkit.persistence.PersistentDataContainer
 import org.bukkit.persistence.PersistentDataType
 import java.util.*
 
-class WeaponPropertyType<T : Any, Z : Any> private constructor(
+class WeaponPropertyType<T : Any, Z : Any> (
     val key: String,
     val type: PersistentDataType<T, Z>,
+    val identifier: Boolean = false,
 ) {
-    val namespacedKey = NamespacedKey(GunfightEngine.plugin, "${Constants.weaponKeyPrefix}$key")
+    val namespacedKey = NamespacedKey(GunfightEngine.plugin, "${Constants.weaponContainerKey}$key")
     operator fun get(container: PersistentDataContainer) = container[namespacedKey, type]
     operator fun set(container: PersistentDataContainer, value: Z) {
         container[namespacedKey, type] = value
@@ -34,7 +36,6 @@ class WeaponPropertyType<T : Any, Z : Any> private constructor(
                 return if(bool) integerTrue else integerFalse
             }
         }
-        private val SELECTOR_TYPE = ExtraUtil.EnumPersistentDataType(SelectorLever.SelectorType::class.java)
         private val STATE_TYPE = ExtraUtil.EnumPersistentDataType(Weapon.WeaponState::class.java)
         private val UUID = object : PersistentDataType<IntArray, UUID> {
             private val primitiveType = IntArray::class.java
@@ -55,12 +56,25 @@ class WeaponPropertyType<T : Any, Z : Any> private constructor(
                 return intArrayOf((most shr 32).toInt(), most.toInt(), (least shr 32).toInt(), least.toInt())
             }
         }
+        operator fun <T : Any, Z : Any> PersistentDataContainer.get(type: WeaponPropertyType<T, Z>) = type[this]
+        operator fun <T : Any, Z : Any> PersistentDataContainer.set(type: WeaponPropertyType<T, Z>, value: Z) {
+            type[this] = value
+        }
 
-        val KEY = WeaponPropertyType("key", PersistentDataType.STRING)
-        val ID = WeaponPropertyType("id", UUID)
-        val AMMO = WeaponPropertyType("ammo", PersistentDataType.INTEGER)
+        val KEY = WeaponPropertyType("key", PersistentDataType.STRING, true)
+        val ID = WeaponPropertyType("id", UUID, true)
         val AIMING = WeaponPropertyType("aiming", BOOL)
-        val SELECTOR = WeaponPropertyType("selector", SELECTOR_TYPE)
         val STATE = WeaponPropertyType("state", STATE_TYPE)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if(other is WeaponPropertyType<*, *>) {
+            return key == other.key
+        }
+        return super.equals(other)
+    }
+
+    override fun hashCode(): Int {
+        return key.hashCode()
     }
 }
