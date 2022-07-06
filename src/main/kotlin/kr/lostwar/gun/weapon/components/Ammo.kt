@@ -3,7 +3,7 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.*
 import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
-import kr.lostwar.gun.weapon.event.WeaponShootEvent
+import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponTriggerEvent
 import kr.lostwar.util.AnimationClip
@@ -26,13 +26,9 @@ class Ammo(
 
     val canReload: Boolean = getBoolean("reload.enable", parent?.canReload, true)
     val reloadEmptyAmmoDelay: Int = getInt("reload.emptyAmmoDelay", parent?.reloadEmptyAmmoDelay, 5)
-    val reloadIndividually: Boolean = getBoolean("reload.reloadIndividually", parent?.reloadIndividually, false)
-    val reloadIndividuallyWhenTacticalReload: Boolean = getBoolean("reload.reloadIndividuallyWhenTacticalReload", parent?.reloadIndividuallyWhenTacticalReload, false)
-    val reloadIndividuallyFillAmmoImmediately: Boolean = getBoolean("reload.reloadIndividuallyFillAmmoImmediately", parent?.reloadIndividuallyFillAmmoImmediately, false)
-
     val reloadDuration: Int = getInt("reload.duration", parent?.reloadDuration, 1)
-    val reloadSound: SoundClip = getSoundClip("reload.reloadSound", parent?.reloadSound)
-    val reloadAnimation: AnimationClip = getAnimationClip("reload.reloadAnimation", parent?.reloadAnimation)
+    val reloadSound: SoundClip = getSoundClip("reload.sound", parent?.reloadSound)
+    val reloadAnimation: AnimationClip = getAnimationClip("reload.animation", parent?.reloadAnimation)
 
     val reloadStartDuration: Int = getInt("reload.reloadStartDuration", parent?.reloadStartDuration, 0)
     val reloadEndDuration: Int = getInt("reload.reloadEndDuration", parent?.reloadEndDuration, 0)
@@ -40,6 +36,24 @@ class Ammo(
     val reloadEndSound: SoundClip = getSoundClip("reload.reloadEndSound", parent?.reloadEndSound)
     val reloadStartAnimation: AnimationClip = getAnimationClip("reload.reloadStartAnimation", parent?.reloadStartAnimation)
     val reloadEndAnimation: AnimationClip = getAnimationClip("reload.reloadEndAnimation", parent?.reloadEndAnimation)
+
+    val tacticalReloadAnimation: AnimationClip = getAnimationClip("tacticalReload.animation", parent?.tacticalReloadAnimation, reloadAnimation)
+    val tacticalReloadStartAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadStartAnimation", parent?.tacticalReloadStartAnimation, reloadStartAnimation)
+    val tacticalReloadEndAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadEndAnimation", parent?.tacticalReloadEndAnimation, reloadEndAnimation)
+
+    val reloadIndividually: Boolean = getBoolean("reloadIndividually.enable", parent?.reloadIndividually, false)
+    val reloadIndividuallyWhenTacticalReload: Boolean = getBoolean("reloadIndividually.useWhenTacticalReload", parent?.reloadIndividuallyWhenTacticalReload, false)
+    val reloadIndividuallyFillAmmoImmediately: Boolean = getBoolean("reloadIndividually.fillAmmoImmediately", parent?.reloadIndividuallyFillAmmoImmediately, false)
+    val reloadIndividuallyDuration: Int = getInt("reloadIndividually.duration", parent?.reloadIndividuallyDuration, reloadDuration)
+    val reloadIndividuallySound: SoundClip = getSoundClip("reloadIndividually.sound", parent?.reloadIndividuallySound, reloadSound)
+    val reloadIndividuallyAnimation: AnimationClip = getAnimationClip("reloadIndividually.animation", parent?.reloadIndividuallyAnimation, reloadAnimation)
+
+    val reloadIndividuallyStartDuration: Int = getInt("reloadIndividually.reloadStartDuration", parent?.reloadIndividuallyStartDuration, reloadStartDuration)
+    val reloadIndividuallyEndDuration: Int = getInt("reloadIndividually.reloadEndDuration", parent?.reloadIndividuallyEndDuration, reloadEndDuration)
+    val reloadIndividuallyStartSound: SoundClip = getSoundClip("reloadIndividually.reloadStartSound", parent?.reloadIndividuallyStartSound, reloadStartSound)
+    val reloadIndividuallyEndSound: SoundClip = getSoundClip("reloadIndividually.reloadEndSound", parent?.reloadIndividuallyEndSound, reloadEndSound)
+    val reloadIndividuallyStartAnimation: AnimationClip = getAnimationClip("reloadIndividually.reloadStartAnimation", parent?.reloadIndividuallyStartAnimation, reloadStartAnimation)
+    val reloadIndividuallyEndAnimation: AnimationClip = getAnimationClip("reloadIndividually.reloadEndAnimation", parent?.reloadIndividuallyEndAnimation, reloadEndAnimation)
 
     // TODO 아이템 탄약 기능 추가?
 
@@ -53,65 +67,101 @@ class Ammo(
     val boltOpenDuration: Int = getInt("bolt.openDuration", parent?.boltOpenDuration, 1)
     val boltCloseDuration: Int = getInt("bolt.closeDuration", parent?.boltCloseDuration, 1)
 
-    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
-        // 무기 LoadAction 복구
-        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.LOWEST) { event ->
-            val weapon = event.weapon
 
-            // 마지막에 저장된 LoadAction이 있을 경우
-            val lastMotion = weapon.lastLoadMotion
-            val lastEvent = weapon.lastLoadEvent
+    private fun WeaponPlayer.loadAction(eventType: LoadEventType, motionType: LoadMotionType? = null) {
+        if(weapon?.primaryAction != null) return
+        val generatedAction = loadActionGenerate(eventType, motionType) ?: return
+        generatedAction.weapon.primaryAction = generatedAction
+    }
+    private fun WeaponPlayer.loadActionGenerate(
+        eventType: LoadEventType,
+        motionType: LoadMotionType? = null
+    ): LoadAction? {
+        val weapon = weapon ?: return null
 
-            if(lastMotion != null && lastEvent != null) {
-                loadAction(lastEvent, lastMotion)
-                weapon.lastLoadMotion = null
-                weapon.lastLoadEvent = null
-            }
-        },
-        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.MONITOR) { event ->
-            val weapon = event.weapon
-            // 끝까지 아무런 action이 설정되지 않은 경우
-            if(weapon.primaryAction != null) return@WeaponPlayerEventListener
+        val actions = boltLoadType[eventType]
+        if (actions.isEmpty()) return null
 
-            // 탄창이 다 비었을 때
-            if(weapon.ammo <= 0) {
-                loadAction(LoadEventType.EMPTY_RELOAD)
-            }
-        },
-        WeaponPlayerEventListener(WeaponActionEndEvent::class.java) { event ->
-            val weapon = event.weapon
-            // 무기가 달라진 경우
-            if(event.isWeaponChanged) {
-                return@WeaponPlayerEventListener
-            }
-            // ShootAction 끝났을 때 (매 발사 종료 시마다)
-            if(event.oldAction is ShootAction) {
-                // 탄창 남았으면 볼트, 펌프 등 실행
+        return LoadAction(weapon, eventType, motionType)
+    }
+
+    // 무기 LoadAction 복구
+    private val startHoldingListenerForRecoverLoadAction
+    = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.LOW) { event ->
+        val weapon = event.weapon
+
+        // 마지막에 저장된 LoadAction이 있을 경우
+        val lastEvent = weapon.currentLoadEvent
+        val lastMotion = weapon.currentLoadMotion
+
+        if(lastEvent != null) {
+            loadAction(lastEvent, lastMotion)
+        }
+    }
+    private val startHoldingListenerForReload
+    = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.MONITOR) { event ->
+        val weapon = event.weapon
+        // 끝까지 아무런 action이 설정되지 않은 경우
+        if(weapon.primaryAction != null) return@WeaponPlayerEventListener
+
+        // 탄창이 다 비었을 때
+        if(canReload && weapon.ammo <= 0) {
+            loadAction(LoadEventType.EMPTY_RELOAD)
+        }
+    }
+
+    private val weaponActionEndListener
+    = WeaponPlayerEventListener(WeaponActionEndEvent::class.java) { event ->
+//            GunEngine.log("Ammo::WeaponActionEndEvent")
+        val weapon = event.weapon
+        // 무기가 달라진 경우
+        if(event.isWeaponChanged) {
+//                GunEngine.log("- weapon changed, return")
+            return@WeaponPlayerEventListener
+        }
+        val oldIsShootAction = event.oldAction is ShootAction
+        // 이미 다음 액션이 결정된 경우 예약해두기
+        if(event.newAction != null) {
+            if(oldIsShootAction) {
                 if(weapon.ammo > 0) {
-                    event.newAction = loadActionGenerate(LoadEventType.SHOOT_END_NOT_EMPTY)
-                }
-                // 탄창 없으면 재장전
-                else {
-                    event.newAction = loadActionGenerate(LoadEventType.EMPTY_RELOAD)
+                    weapon.currentLoadEvent = LoadEventType.SHOOT_END_NOT_EMPTY
+                }else if(canReload) {
+                    weapon.currentLoadEvent = LoadEventType.EMPTY_RELOAD
                 }
             }
-            // 아무튼 다음 action이 빈자리일 때
-            else if(event.newAction == null){
-                // 대기 상태인 load가 있을 때
-                val lastMotion = weapon.lastLoadMotion
-                val lastEvent = weapon.lastLoadEvent
+            return@WeaponPlayerEventListener
+        }
+        // ShootAction 끝났을 때 (매 발사 종료 시마다)
+        if(oldIsShootAction) {
+            // 탄창 남았으면 볼트, 펌프 등 실행
+            if(weapon.ammo > 0) {
+                event.newAction = loadActionGenerate(LoadEventType.SHOOT_END_NOT_EMPTY)
+            }
+            // 탄창 없으면 재장전
+            else if(canReload) {
+                event.newAction = loadActionGenerate(LoadEventType.EMPTY_RELOAD)
+            }
+        }
+        // 아무튼 다음 action이 빈자리일 때
+        else{
+            // 대기 상태인 load가 있을 때
+            val lastEvent = weapon.currentLoadEvent
+            val lastMotion = weapon.currentLoadMotion
 
-                if(lastMotion != null && lastEvent != null) {
-                    event.newAction = loadActionGenerate(lastEvent, lastMotion)
-                    weapon.lastLoadMotion = null
-                    weapon.lastLoadEvent = null
-                }
-                // 탄창이 없을 때
-                else if(weapon.ammo <= 0) {
-                    event.newAction = loadActionGenerate(LoadEventType.EMPTY_RELOAD)
-                }
+            if(lastEvent != null) {
+                event.newAction = loadActionGenerate(lastEvent, lastMotion)
             }
-        },
+            // 탄창이 없을 때
+            else if(weapon.ammo <= 0) {
+                event.newAction = loadActionGenerate(LoadEventType.EMPTY_RELOAD)
+            }
+        }
+    }
+
+    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+        startHoldingListenerForRecoverLoadAction,
+        startHoldingListenerForReload,
+        weaponActionEndListener,
         WeaponPlayerEventListener(PlayerDropItemEvent::class.java) { event ->
             val weapon = this.weapon ?: return@WeaponPlayerEventListener
             event.isCancelled = true
@@ -135,24 +185,11 @@ class Ammo(
                 currentAction.skip(LoadMotionType.RELOAD)
             }
         },
-        WeaponPlayerEventListener(WeaponShootEvent::class.java) { event ->
+        WeaponPlayerEventListener(WeaponShootPrepareEvent::class.java) { event ->
             val weapon = this.weapon ?: return@WeaponPlayerEventListener
             weapon.ammo -= 1
         },
     )
-
-    private fun WeaponPlayer.loadAction(eventType: LoadEventType, motionType: LoadMotionType? = null)
-        = loadActionGenerate(eventType, motionType)?.let { it.weapon.primaryAction = it }
-    private fun WeaponPlayer.loadActionGenerate(eventType: LoadEventType, motionType: LoadMotionType? = null): LoadAction? {
-        val weapon = weapon ?: return null
-        if(weapon.primaryAction != null) return null
-
-        val actions = boltLoadType[eventType]
-        if(actions.isEmpty()) return null
-
-        val loadAction = LoadAction(weapon, eventType, motionType)
-        return loadAction
-    }
 
     override fun onInstantiate(weapon: Weapon) {
         weapon.registerNotNull(AMMO, startAmount)
@@ -162,6 +199,7 @@ class Ammo(
     companion object {
         private val LOAD_MOTION_TYPE = ExtraUtil.EnumPersistentDataType(LoadMotionType::class.java)
         private val LOAD_EVENT_TYPE = ExtraUtil.EnumPersistentDataType(LoadEventType::class.java)
+
         private val AMMO = WeaponPropertyType("ammo", PersistentDataType.INTEGER)
         private val LOAD_MOTION = WeaponPropertyType("load.motion", LOAD_MOTION_TYPE)
         private val LOAD_EVENT = WeaponPropertyType("load.event", LOAD_EVENT_TYPE)
@@ -169,10 +207,10 @@ class Ammo(
         var Weapon.ammo: Int
             get() = get(AMMO) ?: 0
             set(value) { set(AMMO, value)  }
-        var Weapon.lastLoadMotion: LoadMotionType?
+        var Weapon.currentLoadMotion: LoadMotionType?
             get() = get(LOAD_MOTION)
             set(value) { set(LOAD_MOTION, value) }
-        var Weapon.lastLoadEvent: LoadEventType?
+        var Weapon.currentLoadEvent: LoadEventType?
             get() = get(LOAD_EVENT)
             set(value) { set(LOAD_EVENT, value) }
 

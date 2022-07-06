@@ -30,6 +30,11 @@ class GunfightEngine : JavaPlugin() {
                 log("${engine.name} &8비활성화됨")
             }
         }
+        server.scheduler.runTask(this, Runnable {
+            for(engine in engines) {
+                engine.lateInit()
+            }
+        })
     }
 
     override fun onDisable() {

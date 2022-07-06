@@ -19,9 +19,15 @@ abstract class WeaponAction(
         return true
     }
     fun tick() {
+        if(!isRunning) return
         onTick()
     }
     protected open fun onStart() {}
     protected abstract fun onTick()
     protected open fun onEnd() {}
+
+    val name = javaClass.simpleName
+    override fun toString(): String {
+        return name
+    }
 }

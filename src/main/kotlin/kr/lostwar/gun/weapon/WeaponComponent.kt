@@ -25,8 +25,16 @@ abstract class WeaponComponent(
             Burst::class.java,
             SelectorLever::class.java,
             Click::class.java,
+            HitEntity::class.java,
+            HitBlock::class.java,
             Shoot::class.java,
+            Spread::class.java,
+            Hitscan::class.java,
+            Zoom::class.java,
         )
+        fun register(clazz: Class<out WeaponComponent>) {
+            components.add(clazz)
+        }
         val registeredComponents by lazy { components.toList() }
         val registeredComponentsWithConstructor by lazy {
             registeredComponents.mapNotNull {
@@ -49,7 +57,7 @@ abstract class WeaponComponent(
     }
 
 
-    val name = javaClass.name
+    val name = javaClass.simpleName
     val isEnable: Boolean = run {
         // config에 모듈 자체가 없으면 false 처리
         // 모듈만 있고, enable 키가 없으면 true 처리

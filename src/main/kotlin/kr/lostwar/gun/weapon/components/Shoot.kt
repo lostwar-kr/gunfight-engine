@@ -1,20 +1,25 @@
 package kr.lostwar.gun.weapon.components
 
-import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.DelayAction
-import kr.lostwar.gun.weapon.actions.LoadEventType
 import kr.lostwar.gun.weapon.actions.ShootAction
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
-import kr.lostwar.gun.weapon.components.Ammo.Companion.lastLoadEvent
-import kr.lostwar.gun.weapon.components.Ammo.Companion.lastLoadMotion
 import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.util.AnimationClip
+import kr.lostwar.util.SoundClip
+import kr.lostwar.util.logErrorNull
+import kr.lostwar.util.math.VectorUtil
+import kr.lostwar.util.math.VectorUtil.localToWorld
+import kr.lostwar.util.math.VectorUtil.toVectorString
+import org.bukkit.FluidCollisionMode
+import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.entity.LivingEntity
 import org.bukkit.event.Event
 import org.bukkit.event.inventory.ClickType
 import org.bukkit.persistence.PersistentDataType
+import org.bukkit.util.Vector
 
 class Shoot(
     config: ConfigurationSection?,
@@ -22,9 +27,16 @@ class Shoot(
     parent: Shoot?,
 ) : WeaponComponent(config, weaponType, parent) {
 
-    val shootDelay: Int = getInt("shootDelay", parent?.shootDelay, 1)
-    val shootAnimation: AnimationClip = getAnimationClip("shootAnimation", parent?.shootAnimation)
-    val shootClickTicks: Int = getInt("shootClickTicks", parent?.shootClickTicks, 6)
+    val shootDelay: Int = getInt("delay", parent?.shootDelay, 1)
+    val shootCount: Int = getInt("shootCount", parent?.shootCount, 1)
+    val sound: SoundClip = getSoundClip("sound", parent?.sound)
+    val animation: AnimationClip = getAnimationClip("animation", parent?.animation)
+    val clickTicks: Int = getInt("clickTicks", parent?.clickTicks, 6)
+    val adjustDirectionByShootPositionOffset: Boolean = getBoolean("adjustDirectionByShootPositionOffset", parent?.adjustDirectionByShootPositionOffset, true)
+    val adjustDirectionThickness: Double = getDouble("adjustDirectionThickness", parent?.adjustDirectionThickness, 1.0)
+    val adjustDirectionRange: Double = getDouble("adjustDirectionRange", parent?.adjustDirectionRange, 100.0)
+    val shootPositionOffset: List<Vector> = getStringList("shootPositionOffset", parent?.shootPositionOffset?.map { it.toVectorString() })
+        .mapNotNull { VectorUtil.fromVectorString(it) ?: logErrorNull("cannot parse offset vector: $it") }
 
     private val onClick = WeaponPlayerEventListener(WeaponClickEvent::class.java) { event ->
         if(event.clickType != ClickType.RIGHT) {
@@ -89,21 +101,63 @@ class Shoot(
 
     internal fun WeaponPlayer.shoot(action: ShootAction) {
         val weapon = weapon ?: return
-        val shootEvent = WeaponShootEvent(this, action)
-            .callEventOnHoldingWeapon()
-        player.sendMessage("shoot")
-        // TODO 발사 로직
+        val prepareEvent = WeaponShootPrepareEvent(this, action, player.eyeLocation)
+            .callEventOnHoldingWeapon(callBukkit = true)
+        action.shoot.sound.playAt(player)
+
+        val immutableRay = prepareEvent.ray
+        val ray: Location = prepareEvent.ray
+
+        val shootEvent = WeaponShootEvent(this, action, ray, prepareEvent.filter)
+        for(i in 0 until shootCount) {
+            if(shootPositionOffset.isNotEmpty()) {
+                nextShootPositionOffset(ray, immutableRay, prepareEvent.filter)
+            }
+            shootEvent.callEventOnHoldingWeapon()
+        }
+    }
+
+    fun WeaponPlayer.nextShootPositionOffset(mutableRay: Location, immutableRay: Location, filter: RaycastPredicate) {
+        val weapon = weapon!!
+        val currentOffset = shootPositionOffset[weapon.shootCount % shootPositionOffset.size]
+        val currentWorldOffset = currentOffset.localToWorld(immutableRay.direction)
+        val currentOffsetPosition = currentWorldOffset.clone().add(immutableRay.toVector())
+
+        // 발사 위치만 설정, 방향은 그대로 사용
+        if(!adjustDirectionByShootPositionOffset) {
+            mutableRay.set(currentOffsetPosition.x, currentOffsetPosition.y, currentOffsetPosition.z)
+        }
+        // 방향도 보정
+        else{
+            player.world.rayTrace(
+                immutableRay, immutableRay.direction,
+                adjustDirectionRange,
+                FluidCollisionMode.NEVER,
+                true, // ignorePassable
+                adjustDirectionThickness
+            ) { it is LivingEntity && filter(it, player) } // filter
+                ?.let { result ->
+                    mutableRay.direction = result.hitPosition.subtract(currentWorldOffset)
+                }
+        }
+        ++weapon.shootCount
     }
 
     override fun onInstantiate(weapon: Weapon) {
         weapon.registerNullable(LEFT_SHOOT_DELAY, 0)
+        weapon.registerNullable(SHOOT_COUNT, 0)
     }
     companion object {
         private val LEFT_SHOOT_DELAY = WeaponPropertyType("shoot.left_delay", PersistentDataType.INTEGER)
+        private val SHOOT_COUNT = WeaponPropertyType("shoot.count", PersistentDataType.INTEGER)
 
         var Weapon.leftShootDelay: Int
             get() = get(LEFT_SHOOT_DELAY) ?: 0
             set(value) { set(LEFT_SHOOT_DELAY, value) }
+
+        var Weapon.shootCount: Int
+            get() = get(SHOOT_COUNT) ?: 0
+            set(value) { set(SHOOT_COUNT, value) }
     }
 }
 

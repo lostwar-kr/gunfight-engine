@@ -11,16 +11,16 @@ open class WeaponPlayerEvent(
     open val weapon; get() = player.weapon
 
     companion object {
-        private val handlers = HandlerList()
-        @JvmStatic fun getHandlerList() = Companion.handlers
+        @JvmStatic val handlerList = HandlerList()
 
-        inline fun <reified T : WeaponPlayerEvent> T.callEventOnHoldingWeapon(): T {
+        inline fun <reified T : WeaponPlayerEvent> T.callEventOnHoldingWeapon(callBukkit: Boolean = false): T {
             val weapon = weapon
                 ?: error("WeaponPlayerEvent::callEventOnHoldingWeapon() for ${player.player.name} called but invalid WeaponPlayer::weapon detected")
             weapon.type.callEvent(player, this)
+            if(callBukkit) callEvent()
             return this
         }
     }
-    override fun getHandlers(): HandlerList = Companion.handlers
+    override fun getHandlers(): HandlerList = handlerList
 
 }

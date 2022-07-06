@@ -15,13 +15,13 @@ class WeaponPropertyType<T : Any, Z : Any> (
     val type: PersistentDataType<T, Z>,
     val identifier: Boolean = false,
 ) {
-    val namespacedKey = NamespacedKey(GunfightEngine.plugin, "${Constants.weaponContainerKey}$key")
+    val namespacedKey = NamespacedKey("p", key)
     operator fun get(container: PersistentDataContainer) = container[namespacedKey, type]
     operator fun set(container: PersistentDataContainer, value: Z) {
         container[namespacedKey, type] = value
     }
     companion object {
-        private val BOOL = object : PersistentDataType<Integer, Boolean> {
+        val BOOL = object : PersistentDataType<Integer, Boolean> {
             private val primitiveType = Integer::class.java
             override fun getPrimitiveType(): Class<Integer> = primitiveType
             private val complexType = Boolean::class.java
@@ -63,7 +63,6 @@ class WeaponPropertyType<T : Any, Z : Any> (
 
         val KEY = WeaponPropertyType("key", PersistentDataType.STRING, true)
         val ID = WeaponPropertyType("id", UUID, true)
-        val AIMING = WeaponPropertyType("aiming", BOOL)
         val STATE = WeaponPropertyType("state", STATE_TYPE)
     }
 

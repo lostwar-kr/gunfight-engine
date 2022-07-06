@@ -16,4 +16,8 @@ open class DelayAction(
         end()
     }
 
+    override fun toString(): String {
+        return super.toString()+"(left=${count})"
+    }
+
 }

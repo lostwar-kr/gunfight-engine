@@ -3,16 +3,19 @@ package kr.lostwar.gun.weapon.event
 import kr.lostwar.gun.weapon.WeaponPlayer
 import kr.lostwar.gun.weapon.actions.ShootAction
 import org.bukkit.Location
+import org.bukkit.entity.Entity
+import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 
-class WeaponShootEvent(
+typealias RaycastPredicate = (entity: LivingEntity, shooter: Player) -> Boolean
+class WeaponShootPrepareEvent(
     player: WeaponPlayer,
     val action: ShootAction,
-    private val mutableRay: Location,
-    val filter: RaycastPredicate,
+    var ray: Location,
 ) : WeaponPlayerEvent(player) {
 
-    val shootRay; get() = mutableRay.clone()
+    var filter: RaycastPredicate = { entity, player -> true }
 
     override fun getHandlers() = handlerList
     companion object {

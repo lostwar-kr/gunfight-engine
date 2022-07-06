@@ -84,6 +84,19 @@ class SoundInfo private constructor(
             }
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if(other is SoundInfo) {
+            return custom == other.custom && (if(custom) soundString == other.soundString else soundEnum == other.soundEnum)
+        }
+        return super.equals(other)
+    }
+
+    override fun hashCode(): Int {
+        var hashCode = if(custom) 1 else 0
+        hashCode = 31 * hashCode + if(custom) soundString.hashCode() else soundEnum.hashCode()
+        return hashCode
+    }
 }
 
 class SoundClip(
@@ -146,4 +159,24 @@ class SoundClip(
             return SoundClip(list.mapNotNull { SoundInfo.parse(it) })
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if(other is SoundClip) {
+            if(sounds.size != other.sounds.size) return false
+//            for((index, sound) in sounds.withIndex()) {
+//                if(sound != other.sounds[index]) return false
+//            }
+            return hashCode() == other.hashCode()
+        }
+        return super.equals(other)
+    }
+
+    override fun hashCode(): Int {
+        var hashCode = sounds.size
+        for(sound in sounds) {
+            hashCode = 31 * hashCode + sound.hashCode()
+        }
+        return hashCode
+    }
+
 }

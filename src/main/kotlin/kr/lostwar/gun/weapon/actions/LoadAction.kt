@@ -2,12 +2,12 @@ package kr.lostwar.gun.weapon.actions
 
 import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponAction
-import kr.lostwar.gun.weapon.components.Ammo
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
-import kr.lostwar.gun.weapon.components.Ammo.Companion.lastLoadEvent
-import kr.lostwar.gun.weapon.components.Ammo.Companion.lastLoadMotion
-import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent
+import kr.lostwar.gun.weapon.components.Ammo.Companion.currentLoadEvent
+import kr.lostwar.gun.weapon.components.Ammo.Companion.currentLoadMotion
+import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent.Type
 import kr.lostwar.util.AnimationClip
+import kr.lostwar.util.ExtraUtil.joinToString
 import kr.lostwar.util.SoundClip
 
 class LoadAction(
@@ -20,7 +20,9 @@ class LoadAction(
     val loadType = ammo.boltLoadType
     val motions = loadType[eventType]
     var currentMotionIndex = -1
-    lateinit var currentMotion: LoadMotionType
+    var currentMotion: LoadMotionType
+        get() = weapon.currentLoadMotion!!
+        set(value) { weapon.currentLoadMotion = value }
 
     val isReload = eventType == LoadEventType.TACTICAL_RELOAD || eventType == LoadEventType.EMPTY_RELOAD
     val isTacticalReload = weapon.ammo > 0
@@ -31,6 +33,7 @@ class LoadAction(
     var delay = 0
 
     override fun onStart() {
+        weapon.currentLoadEvent = eventType
         // 중간부터 시작하는 경우
         if(startMotion != null) {
             currentMotion = startMotion
@@ -40,7 +43,7 @@ class LoadAction(
         }
         // 중간부터 시작하는 게 아닐 경우
         else {
-            nextMotion()
+            nextMotion(true)
         }
     }
 
@@ -88,14 +91,19 @@ class LoadAction(
             if(isReload) {
                 weapon.ammo = ammo.amount
             }
-            weapon.lastLoadMotion = null
-            weapon.lastLoadEvent = null
+            weapon.currentLoadMotion = null
+            weapon.currentLoadEvent = null
         }
-        // 중단된 경우 마지막 상태 저장
-        else {
-            weapon.lastLoadMotion = currentMotion
-            weapon.lastLoadEvent = eventType
-        }
+    }
+
+    override fun toString(): String {
+        return super.toString()+"(" +
+                "event=${eventType}," +
+                "motion=${if(isRunning) currentMotion else null}," +
+                "delay=${delay}," +
+                "lapsed=${lapsedTime}," +
+                "motions=${motions.joinToString()}" +
+        ")"
     }
 }
 
@@ -124,41 +132,48 @@ reload_empty: reload, open, close
  */
 
 enum class LoadMotionType(
-    val sound: Ammo.() -> SoundClip,
-    val animationType: WeaponAnimationDetermineEvent.Type,
-    val animation: Ammo.() -> AnimationClip,
-    val duration: Ammo.() -> Int,
+    val sound: LoadAction.() -> SoundClip,
+    val animationType: LoadAction.() -> Type,
+    val animation: LoadAction.() -> AnimationClip,
+    val duration: LoadAction.() -> Int,
 ) {
     OPEN(
-        { boltOpenSound },
-        WeaponAnimationDetermineEvent.Type.BOLT_OPEN, { boltOpenAnimation },
-        { boltOpenDuration }
+        { ammo.boltOpenSound },
+        { Type.BOLT_OPEN },
+        { ammo.boltOpenAnimation },
+        { ammo.boltOpenDuration }
     ),
     CLOSE(
-        { boltCloseSound },
-        WeaponAnimationDetermineEvent.Type.BOLT_CLOSE, { boltCloseAnimation },
-        { boltCloseDuration }
+        { ammo.boltCloseSound },
+        { Type.BOLT_CLOSE },
+        { ammo.boltCloseAnimation },
+        { ammo.boltCloseDuration }
     ),
     RELOAD_START(
-        { reloadStartSound },
-        WeaponAnimationDetermineEvent.Type.RELOAD_START, { reloadStartAnimation },
-        { reloadStartDuration }
+        { if(isIndividuallyReload) ammo.reloadIndividuallyStartSound else ammo.reloadStartSound },
+        { if(isIndividuallyReload) Type.RELOAD_INDIVIDUALLY_START else if(isTacticalReload) Type.TACTICAL_RELOAD_START else Type.RELOAD_START },
+        {
+            if(isIndividuallyReload) ammo.reloadIndividuallyStartAnimation
+            else if (isTacticalReload) ammo.tacticalReloadStartAnimation
+            else ammo.reloadStartAnimation
+        },
+        { if(isIndividuallyReload) ammo.reloadIndividuallyStartDuration else ammo.reloadStartDuration }
     ),
     RELOAD(
-        { reloadSound },
-        WeaponAnimationDetermineEvent.Type.RELOAD, { reloadAnimation },
-        { reloadDuration }
+        { if(isIndividuallyReload) ammo.reloadIndividuallySound else ammo.reloadSound },
+        { if(isIndividuallyReload) Type.RELOAD_INDIVIDUALLY else if(isTacticalReload) Type.TACTICAL_RELOAD else Type.RELOAD },
+        {
+            if(isIndividuallyReload) ammo.reloadIndividuallyAnimation
+            else if (isTacticalReload) ammo.tacticalReloadAnimation
+            else ammo.reloadAnimation
+        },
+        { if(isIndividuallyReload) ammo.reloadIndividuallyDuration else ammo.reloadDuration }
     ) {
         override fun LoadAction.execute() {
+            executeDefault(this)
             if(!isIndividuallyReload) {
-                executeDefault(this)
                 return
             }
-            player.playSound(ammo.sound().playAt(player.player))
-            animationType.create(player, ammo.animation())
-                .callEventAndGetClip()
-                .play(player, weapon.type)
-            delay = ammo.reloadDuration
             // (거의 그럴리가 없지만) 사운드/애니메이션과 동시에 채움
             if(ammo.reloadIndividuallyFillAmmoImmediately) {
                 weapon.ammo += 1
@@ -181,25 +196,30 @@ enum class LoadMotionType(
         }
     },
     RELOAD_END(
-        { reloadEndSound },
-        WeaponAnimationDetermineEvent.Type.RELOAD_END, { reloadEndAnimation },
-        { reloadEndDuration }
+        { if(isIndividuallyReload) ammo.reloadIndividuallyEndSound else ammo.reloadEndSound },
+        { if(isIndividuallyReload) Type.RELOAD_INDIVIDUALLY_END else if(isTacticalReload) Type.TACTICAL_RELOAD_END else Type.RELOAD_END },
+        {
+            if(isIndividuallyReload) ammo.reloadIndividuallyEndAnimation
+            else if (isTacticalReload) ammo.tacticalReloadEndAnimation
+            else ammo.reloadEndAnimation
+        },
+        { if(isIndividuallyReload) ammo.reloadIndividuallyEndDuration else ammo.reloadEndDuration }
     ),
     ;
 
     open fun LoadAction.execute() {
         executeDefault(this)
     }
-    protected fun executeDefault(action: LoadAction) {
-        val duration = action.ammo.duration()
+    protected fun executeDefault(action: LoadAction) = with(action) {
+        val duration = duration()
         val offset =
-            if(action.delay == 0) 0
-            else duration - action.delay
-        action.player.playSound(action.ammo.sound().playAt(action.player.player, offset))
-        animationType.create(action.player, action.ammo.animation())
+            if(delay == 0) 0
+            else duration - delay
+        player.playSound(sound().playAt(player.player, offset))
+        animationType().create(player, animation())
             .callEventAndGetClip()
-            .play(action.player, action.weapon.type, offset)
-        action.delay = duration
+            .play(player, weapon.type, offset)
+        delay = duration
     }
 
     open fun LoadAction.repeat(): Boolean = false

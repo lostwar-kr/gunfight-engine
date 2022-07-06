@@ -8,7 +8,7 @@ import kotlin.reflect.KProperty
 
 sealed class WeaponProperty<T : Any, Z : Any>(
     val type: WeaponPropertyType<T, Z>,
-    private val defaultValue: Z?,
+    val defaultValue: Z?,
 ) {
     var value: Z? = defaultValue
 

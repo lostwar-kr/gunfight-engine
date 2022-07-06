@@ -2,13 +2,20 @@ package kr.lostwar.gun.weapon
 
 import kr.lostwar.gun.weapon.WeaponPropertyType.Companion.get
 import kr.lostwar.gun.weapon.WeaponPropertyType.Companion.set
-import kr.lostwar.gun.weapon.components.SelectorLever
 import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
 import kr.lostwar.gun.weapon.event.WeaponActionStartEvent
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.logErrorNull
+import kr.lostwar.util.ui.ComponentUtil.appendText
+import kr.lostwar.util.ui.ComponentUtil.green
+import kr.lostwar.util.ui.ComponentUtil.white
+import kr.lostwar.util.ui.ComponentUtil.yellow
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.JoinConfiguration
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import java.util.*
@@ -28,11 +35,15 @@ class Weapon(
     var primaryAction: WeaponAction? = null
         set(value) {
             val old = field
-            val new = value
-            if(old?.end() == true && player != null) {
-                player?.let { player -> WeaponActionEndEvent(player, old, new).callEventOnHoldingWeapon() }
-            }
-            field = value
+            val new = if(old?.end() == true) {
+                player?.let { player ->
+                    WeaponActionEndEvent(player, old, value)
+                        .callEventOnHoldingWeapon()
+                        .newAction
+                }
+            }else value
+
+            field = new
             if(new?.start() == true) {
                 player?.let { player -> WeaponActionStartEvent(player, old, new).callEventOnHoldingWeapon() }
             }
@@ -47,8 +58,14 @@ class Weapon(
     fun tick() {
         primaryAction?.let {
             it.tick()
+            // 이번 틱에서 끝나버린 경우
             if(!it.isRunning) {
-                primaryAction = null
+                primaryAction = player?.let {
+                        player -> WeaponActionEndEvent(player, it, null)
+                    .callEventOnHoldingWeapon()
+                    .newAction
+                }
+
             }
         }
         for(action in backgroundActions){
@@ -74,20 +91,21 @@ class Weapon(
         propertyMap[type] = property
         return property
     }
-    private fun <T : Any, Z : Any> getPropertyOrRegister(type: WeaponPropertyType<T, Z>): WeaponProperty<T, Z> {
-        val rawProperty = propertyMap.computeIfAbsent(type) { registerNullable(type) }
+    private fun <T : Any, Z : Any> getProperty(type: WeaponPropertyType<T, Z>): WeaponProperty<T, Z>? {
+//        val rawProperty = propertyMap.computeIfAbsent(type) { registerNullable(type) }
+        val rawProperty = propertyMap[type] ?: return null
+        @Suppress("UNCHECKED_CAST")
         return rawProperty as WeaponProperty<T, Z>
     }
     operator fun <T : Any, Z : Any> get(type: WeaponPropertyType<T, Z>): Z? {
-        return getPropertyOrRegister(type).value
+        return getProperty(type)?.value
     }
     operator fun <T : Any, Z : Any> set(type: WeaponPropertyType<T, Z>, value: Z?) {
-        getPropertyOrRegister(type).value = value
+        getProperty(type)?.value = value
     }
 
     var id: UUID by registerNotNull(WeaponPropertyType.ID, UUID.randomUUID()); private set
     var state: WeaponState by registerNotNull(WeaponPropertyType.STATE, WeaponState.NOTHING)
-    var aiming: Boolean by registerNotNull(WeaponPropertyType.AIMING, false)
 
     init {
         type.enabledComponents.forEach { component -> component.onInstantiate(this) }
@@ -117,6 +135,7 @@ class Weapon(
             for(container in propertyMap.values) {
                 container.storeTo(weaponContainer)
             }
+            itemContainer.set(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER, weaponContainer)
         }
     }
 
@@ -141,6 +160,15 @@ class Weapon(
             }
             return weapon
         }
+
+        private val separator = text(", ").white()
+        private val prefix = text("[").white()
+        private val suffix = text("]").white()
+        private val displayJoinConfiguration = JoinConfiguration.builder()
+            .separator(separator)
+            .prefix(prefix)
+            .suffix(suffix)
+            .build()
     }
 
 
@@ -159,6 +187,16 @@ class Weapon(
     }
 
     override fun toString(): String {
-        return "${type.key}:${id}"
+        return "${type.key}${propertyMap.values.filter { it.value != null && it.value != it.defaultValue }.joinToString(",", "{", "}") { it.type.key+"="+it.value }})"
     }
+
+    fun toDisplayComponent(): Component {
+        val properties = propertyMap.values
+            .filter { it.value != null && it.value != it.defaultValue }
+            .map { text(it.type.key).green().appendText("="){white()}.appendText(it.value.toString()){yellow()} }
+        return text(type.key).color(NamedTextColor.YELLOW)
+            .append(Component.join(displayJoinConfiguration, properties))
+    }
+
+
 }

@@ -11,7 +11,7 @@ object VehicleEngine : Engine("andoo") {
     override val commands: List<Command> = listOf(
 
     )
-    override fun onLoad() {
+    override fun onLoad(reload: Boolean) {
 
     }
 }

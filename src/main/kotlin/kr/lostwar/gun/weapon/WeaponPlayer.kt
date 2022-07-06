@@ -3,6 +3,7 @@ package kr.lostwar.gun.weapon
 import com.destroystokyo.paper.event.server.ServerTickEndEvent
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
+import kr.lostwar.util.ui.ComponentUtil.darkGray
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -48,7 +49,7 @@ class WeaponPlayer(
     }
 
     companion object : Listener {
-        private val byUUID = HashMap<UUID, WeaponPlayer>()
+        val byUUID = HashMap<UUID, WeaponPlayer>()
 
         val Player.weaponPlayer: WeaponPlayer; get() = get(this)
         operator fun get(player: Player): WeaponPlayer {
@@ -99,10 +100,10 @@ class WeaponPlayer(
     private fun tick() {
 //        updateCurrentWeapon()
         weapon?.tick()
-        player.sendActionBar(Component.text("weapon: $weapon"))
+        player.sendActionBar(Component.text("weapon: ").append(weapon?.toDisplayComponent() ?: Component.text("not holding").darkGray()))
     }
 
-    private fun updateCurrentWeapon(newItem: ItemStack) {
+    fun updateCurrentWeapon(newItem: ItemStack = player.inventory.itemInMainHand) {
         val oldWeapon = weapon
         val newWeapon = Weapon.takeOut(newItem)
 //        GunEngine.log("oldWeapon: ${oldWeapon}")

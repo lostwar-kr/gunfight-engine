@@ -51,7 +51,7 @@ class Click(
                 ClickType.RIGHT -> ClickType.LEFT
                 else -> return@WeaponPlayerEventListener
             }
-            onClick(rawClickType)
+            onClick(clickType)
         },
         /*
         WeaponPlayerEventListener(PlayerInteractAtEntityEvent::class.java) {

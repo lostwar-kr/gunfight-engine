@@ -25,18 +25,25 @@ abstract class Engine(val name: String) {
             unload()
             return
         }else{
-            onLoad()
-            listeners.forEach { Bukkit.getPluginManager().registerEvents(it, plugin) }
+            onLoad(reload)
+            if(!reload || !oldEnable) {
+                listeners.forEach { Bukkit.getPluginManager().registerEvents(it, plugin) }
+            }
             if(!reload) {
                 Bukkit.getCommandMap().registerAll(name, commands)
             }
         }
     }
+    fun lateInit() {
+        if(!isEnable) return
+        onLateInit()
+    }
     fun unload() {
         listeners.forEach { HandlerList.unregisterAll(it) }
         onUnload()
     }
-    protected abstract fun onLoad()
+    protected abstract fun onLoad(reload: Boolean)
+    protected open fun onLateInit() {}
     protected open fun onUnload() {}
 
     fun log(message: String) {

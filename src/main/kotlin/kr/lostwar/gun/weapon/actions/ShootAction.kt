@@ -54,7 +54,7 @@ class ShootAction(
                 singleShoot()
                 trigger()
                 WeaponAnimationDetermineEvent.Type.SINGLE_SHOOT
-                    .create(player, shoot.shootAnimation)
+                    .create(player, shoot.animation)
                     .callEventAndGetClip()
                     .play(player, weapon.type)
             }
@@ -119,7 +119,7 @@ class ShootAction(
             State.SINGLE_WAIT_DELAY -> {
                 // 딱 끝나는 이번 틱에 누른 경우
                 // 객체 반복 생성 방지를 위해 연결해줌
-                if(clickingTicks == shoot.shootClickTicks) {
+                if(clickingTicks == shoot.clickTicks) {
                     singleShoot()
                     delay = shoot.shootDelay
                 }else{
@@ -188,7 +188,7 @@ class ShootAction(
     var clickingTicks = 0
     var clicking: Boolean = false
     fun trigger() {
-        clickingTicks = shoot.shootClickTicks
+        clickingTicks = shoot.clickTicks
         clicking = true
     }
     fun untrigger() {

@@ -14,6 +14,8 @@ inline fun <reified T> logErrorNull(message: String, stackTrace: Boolean = false
 
 object ExtraUtil {
 
+    fun <T> List<T>.joinToString()
+            = joinToString(", ", "[", "]") { it.toString() }
 
     class PrimitivePersistentDataType<T> constructor(
         private val primitiveType: Class<T>
