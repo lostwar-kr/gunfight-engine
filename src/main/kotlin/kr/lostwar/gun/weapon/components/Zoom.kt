@@ -14,6 +14,7 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.inventory.ClickType
+import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.potion.PotionEffectType
 
 class Zoom(
@@ -125,6 +126,19 @@ class Zoom(
             }
         }
     }
+
+    // 재장전 인터셉트
+    private val dropItemListener = WeaponPlayerEventListener(PlayerDropItemEvent::class.java, priority = EventPriority.LOW) { event ->
+        val weapon = this.weapon ?: return@WeaponPlayerEventListener
+        val ammo = weaponType.ammo ?: return@WeaponPlayerEventListener
+        if(weapon.primaryAction != null) return@WeaponPlayerEventListener
+        event.isCancelled = true
+
+        if(weapon.isZooming && !canReloadWhileZooming) {
+            weapon.primaryAction = zoomAction(false)
+        }
+    }
+
     // 무기를 더 이상 들지 않게 되면 강제 줌 효과 해제
     private val endHoldingListener = WeaponPlayerEventListener(WeaponEndHoldingEvent::class.java, -1) { event ->
         val weapon = event.weapon
@@ -161,6 +175,7 @@ class Zoom(
         actionEndListener,
         endHoldingListener,
         animationListener,
+        dropItemListener,
     )
 
     override fun onLateInit() {

@@ -98,12 +98,14 @@ class Hitscan(
             val block = rayPosition.block
             if(!hitBlock.contains(block)) {
                 hitBlock.add(block)
-                val result = with(weaponType.hitBlock) { hit(block) }
-
-                val blockHitEvent = WeaponBlockHitEvent(this, block, resistanceFactor)
-                    .callEventOnHoldingWeapon()
-                resistanceFactor = blockHitEvent.resistanceFactor
-                if(blockHitEvent.isBlockPierced) isBlockPierced = true
+                val result = with(weaponType.hitBlock) { hit(rayPosition, block, ray.direction.multiply(-1)) }
+                if(result.blockRay) {
+                    break
+                }
+                if(result.pierceSolid) {
+                    isBlockPierced = true
+                }
+                resistanceFactor -= result.resistance
             }
             if(resistanceFactor <= -1.0) break
 

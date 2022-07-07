@@ -3,6 +3,8 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
+import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
+import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.item.ItemBuilder
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemUtil.applyItemMeta
@@ -16,6 +18,7 @@ import org.bukkit.event.Event
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.CrossbowMeta
+import org.bukkit.potion.PotionEffectType
 
 class Item(
     config: ConfigurationSection?,
@@ -64,8 +67,33 @@ class Item(
         val defaultItemType = ItemData(Material.STONE_PICKAXE, 1)
     }
 
-    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+    private val slowDigging = PotionEffectType.SLOW_DIGGING
+        .createEffect(Int.MAX_VALUE, 255)
+        .withParticles(false).withIcon(false)
+    private val fastDigging = PotionEffectType.FAST_DIGGING
+        .createEffect(Int.MAX_VALUE, 10)
+        .withParticles(false).withIcon(false)
 
+    private val onStartHold = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java) { event ->
+        val newWeapon = event.newWeapon
+        if(newWeapon.type.item.useAnimation) {
+            player.addPotionEffect(slowDigging)
+            player.addPotionEffect(fastDigging)
+        }
+    }
+
+    private val onEndHold = WeaponPlayerEventListener(WeaponEndHoldingEvent::class.java) { event ->
+        val newWeapon = event.newWeapon
+        if(newWeapon?.type?.item?.useAnimation == true) {
+            return@WeaponPlayerEventListener
+        }
+        player.removePotionEffect(PotionEffectType.SLOW_DIGGING)
+        player.removePotionEffect(PotionEffectType.FAST_DIGGING)
+    }
+
+    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+        onStartHold,
+        onEndHold,
     )
 
 }

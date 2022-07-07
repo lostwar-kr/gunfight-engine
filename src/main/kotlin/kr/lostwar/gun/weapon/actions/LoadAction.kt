@@ -24,7 +24,7 @@ class LoadAction(
         get() = weapon.currentLoadMotion!!
         set(value) { weapon.currentLoadMotion = value }
 
-    val isReload = eventType == LoadEventType.TACTICAL_RELOAD || eventType == LoadEventType.EMPTY_RELOAD
+    val isReload = eventType.isReload
     val isTacticalReload = weapon.ammo > 0
     val isIndividuallyReload = ammo.reloadIndividually && (!ammo.reloadIndividuallyWhenTacticalReload || isTacticalReload)
 
@@ -225,16 +225,16 @@ enum class LoadMotionType(
     open fun LoadAction.repeat(): Boolean = false
 }
 
-enum class LoadEventType {
+enum class LoadEventType(val isReload: Boolean) {
     // 발사 종료 시
-    SHOOT_END_NOT_EMPTY,
+    SHOOT_END_NOT_EMPTY(false),
 
     // tacticalReload 활성화 시 탄창이 남은 상태에서 재장전 시
-    TACTICAL_RELOAD,
+    TACTICAL_RELOAD(true),
 
     // 탄창이 빈 상태에서 재장전 시
     // 또는 tacticalReload 비활성화 시 그냥 재장전 시
-    EMPTY_RELOAD,
+    EMPTY_RELOAD(true),
 }
 
 

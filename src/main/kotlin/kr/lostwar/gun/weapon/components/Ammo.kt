@@ -81,6 +81,11 @@ class Ammo(
 
         val actions = boltLoadType[eventType]
         if (actions.isEmpty()) return null
+        
+        // 이미 탄창이 꽉 찬 상태로 재장전 시도하면 무시
+        if(eventType.isReload && weapon.ammo >= amount) {
+            return null
+        }
 
         return LoadAction(weapon, eventType, motionType)
     }
@@ -165,11 +170,22 @@ class Ammo(
         WeaponPlayerEventListener(PlayerDropItemEvent::class.java) { event ->
             val weapon = this.weapon ?: return@WeaponPlayerEventListener
             event.isCancelled = true
+            if(!canReload) {
+                return@WeaponPlayerEventListener
+            }
 
-            loadAction(
-                if(boltUseTacticalReloadAction) LoadEventType.TACTICAL_RELOAD
+            val type = 
+                if(boltUseTacticalReloadAction && weapon.ammo > 0) LoadEventType.TACTICAL_RELOAD 
                 else LoadEventType.EMPTY_RELOAD
-            )
+            // 누군가한테 인터셉트 당해버렸으면 (Zoom ...)
+            if(weapon.primaryAction != null) {
+                weapon.currentLoadEvent = type
+            }else{
+                loadAction(
+                    if(boltUseTacticalReloadAction && weapon.ammo > 0) LoadEventType.TACTICAL_RELOAD
+                    else LoadEventType.EMPTY_RELOAD
+                )
+            }
         },
         WeaponPlayerEventListener(WeaponTriggerEvent::class.java) { event ->
             val weapon = event.weapon ?: return@WeaponPlayerEventListener

@@ -126,6 +126,7 @@ class WeaponPlayer(
             stopSound()
             weaponItem = null
         }
+        player.updateInventory()
         // 새로 드는 무기가 없을 경우
         if(new == null) {
 

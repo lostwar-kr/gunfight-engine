@@ -27,8 +27,8 @@ abstract class WeaponComponent(
             Click::class.java,
             HitEntity::class.java,
             HitBlock::class.java,
-            Shoot::class.java,
             Spread::class.java,
+            Shoot::class.java,
             Hitscan::class.java,
             Zoom::class.java,
         )

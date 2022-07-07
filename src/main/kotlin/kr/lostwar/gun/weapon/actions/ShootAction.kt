@@ -88,16 +88,6 @@ class ShootAction(
             end()
             return
         }
-
-        if(clickingTicks > 0) {
-            --clickingTicks
-            if(clickingTicks <= 0) {
-                clicking = false
-            }
-        }
-
-        --delay
-        if(delay > 0) return
         weapon.type.ammo?.let { ammoComponent ->
             if(weapon.ammo <= 0) {
                 if(state != State.EMPTY_AMMO_WAIT) {
@@ -110,11 +100,25 @@ class ShootAction(
                     state = State.EMPTY_AMMO_WAIT
                     delay = ammoComponent.reloadEmptyAmmoDelay
                 }else{
-                    complete()
+                    if(delay > 0){
+                        --delay
+                    }else{
+                        end()
+                    }
                 }
                 return
             }
         }
+
+        if(clickingTicks > 0) {
+            --clickingTicks
+            if(clickingTicks <= 0) {
+                clicking = false
+            }
+        }
+
+        --delay
+        if(delay > 0) return
         when(state) {
             State.SINGLE_WAIT_DELAY -> {
                 // 딱 끝나는 이번 틱에 누른 경우

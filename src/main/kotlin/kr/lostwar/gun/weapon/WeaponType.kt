@@ -48,7 +48,7 @@ class WeaponType(
     val listenerHandler = HashMap<Class<out Event>, MutableList<WeaponPlayerEventListener<Event>>>()
     fun registerListeners(listeners: List<WeaponPlayerEventListener<out Event>>) {
         listeners.forEach { listener ->
-            GunEngine.log("- ${listener.clazz}")
+//            GunEngine.log("- ${listener.clazz}")
             val list = listenerHandler
                 // 없으면 리스트 생성
                 .computeIfAbsent(listener.clazz) { ArrayList() }
@@ -96,6 +96,7 @@ class WeaponType(
         selectorLever = getComponent(SelectorLever::class.java)!!
         hitEntity = getComponent(HitEntity::class.java)!!
         hitBlock = getComponent(HitBlock::class.java)!!
+        spread = getComponent(Spread::class.java)!!
         ammo = getComponent(Ammo::class.java)
         shoot = getComponent(Shoot::class.java)
         zoom = getComponent(Zoom::class.java)

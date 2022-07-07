@@ -1,6 +1,7 @@
 package kr.lostwar.util
 
 import kr.lostwar.GunfightEngine.Companion.plugin
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponPlayer
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
@@ -24,11 +25,14 @@ data class AnimationFrame(
         fun parse(raw: String?): AnimationFrame? {
             if(raw == null) return null
             val split = raw.split('-').map { it.trim() }
-            if(split.size < 3) return null
+            if(split.size < 3) return logErrorNull("cannot parse animation: ${raw} (not enough arguments size)")
 
-            val material = Material.getMaterial(split[0].uppercase()) ?: return null
-            val slot = equipmentSlotByName[split[1].uppercase()] ?: return null
-            val data = split[2].toIntOrNull() ?: return null
+            val material = Material.getMaterial(split[0].uppercase())
+                ?: return logErrorNull("cannot parse animation: ${raw} (invalid material ${split[0]})")
+            val slot = equipmentSlotByName[split[1].uppercase()]
+                ?: return logErrorNull("cannot parse animation: ${raw} (invalid slot ${split[1]})")
+            val data = split[2].toIntOrNull()
+                ?: return logErrorNull("cannot parse animation: ${raw} (invalid data ${split[2]})")
             val delay = split[3].toIntOrNull() ?: 0
 
             return AnimationFrame(ItemData(material, data), slot, delay)
@@ -38,7 +42,7 @@ data class AnimationFrame(
     }
 
     fun play(player: Player, weaponType: WeaponType) {
-        player.sendEquipmentSelf(weaponType.item.itemStack, slot)
+        player.sendEquipmentSelf(weaponType.item.itemStack.materialAndData(item), slot)
     }
 
     override fun toString(): String {
@@ -57,11 +61,14 @@ class AnimationClip(
 
 
     fun play(weaponPlayer: WeaponPlayer, weaponType: WeaponType, offset: Int = 0, loop: Boolean = false) {
+//        GunEngine.log("AnimationClip::play(${frames.joinToString { it.item.data.toString() }})")
         if(isEmpty()) {
+//            GunEngine.log("- isEmpty(), return")
             return
         }
         val player = weaponPlayer.player
         val weapon = weaponPlayer.weapon ?: return
+//        GunEngine.log("- weapon: ${weapon}")
         weaponPlayer.stopAnimation()
         if(offset > 0) playAt(player, weaponType, offset)
         weaponPlayer.playAnimation(object : BukkitRunnable() {
@@ -71,12 +78,14 @@ class AnimationClip(
             var count = offset
             override fun run() {
                 if(weapon != weaponPlayer.weapon || player.isDead || !player.isOnline) {
+//                    GunEngine.log("- cancelled by invalidation")
                     cancel()
                     return
                 }
                 while(count > currentDelay) {
                     if(!iterator.hasNext()) {
                         if(!loop) {
+//                            GunEngine.log("- stop by end of animation")
                             cancel()
                             return
                         }else{

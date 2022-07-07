@@ -187,7 +187,7 @@ class Weapon(
     }
 
     override fun toString(): String {
-        return "${type.key}${propertyMap.values.filter { it.value != null && it.value != it.defaultValue }.joinToString(",", "{", "}") { it.type.key+"="+it.value }})"
+        return "${type.key}${propertyMap.values.filter { it.value != null && it.value != it.defaultValue }.joinToString(",", "{", "}") { it.type.key+"="+it.value }}"
     }
 
     fun toDisplayComponent(): Component {
