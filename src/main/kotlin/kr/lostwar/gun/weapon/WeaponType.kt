@@ -6,7 +6,6 @@ import kr.lostwar.gun.weapon.components.*
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.Config
-import kr.lostwar.util.logErrorNull
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Cancellable
 import org.bukkit.event.Event
@@ -25,7 +24,7 @@ class WeaponType(
     val config: Config,
 ) {
     private val parentWeaponKey =
-        if (key != rootWeaponKey) (config.getString("parent") ?: rootWeaponKey)
+        if (key != rootWeaponKey) (section.getString("parent") ?: rootWeaponKey)
         else null
     var loaded = false
     var valid = true
@@ -205,7 +204,7 @@ class WeaponType(
 
         private fun register(key: String, section: ConfigurationSection, config: Config): WeaponType? {
             if (key in weaponsByKey) {
-                return logErrorNull("중복 무기 key 발생: ${key}, ${config.file.path} 파일 불러오는 중 발생")
+                return GunEngine.logErrorNull("중복 무기 key 발생: ${key}, ${config.file.path} 파일 불러오는 중 발생")
             }
 
             val weapon = WeaponType(key, section, config)

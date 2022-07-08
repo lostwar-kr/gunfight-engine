@@ -14,25 +14,29 @@ import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.scheduler.BukkitRunnable
 
 data class AnimationFrame(
-    val item: ItemData,
+    val item: ItemData?,
     val slot: EquipmentSlot,
     val delay: Int,
 ) {
 
     companion object {
         private val equipmentSlotByName = EquipmentSlot.values().toList().associateBy { it.name }
-
+        private val dummyKey = "DUMMY"
         fun parse(raw: String?): AnimationFrame? {
             if(raw == null) return null
             val split = raw.split('-').map { it.trim() }
-            if(split.size < 3) return logErrorNull("cannot parse animation: ${raw} (not enough arguments size)")
+            if(split.size >= 2 && split[0] == dummyKey){
+                val delay = split[1].toIntOrNull() ?: 0
+                return AnimationFrame(null, EquipmentSlot.HAND, delay)
+            }
+            if(split.size < 3) return GunEngine.logErrorNull("cannot parse animation: ${raw} (not enough arguments size)")
 
             val material = Material.getMaterial(split[0].uppercase())
-                ?: return logErrorNull("cannot parse animation: ${raw} (invalid material ${split[0]})")
+                ?: return GunEngine.logErrorNull("cannot parse animation: ${raw} (invalid material ${split[0]})")
             val slot = equipmentSlotByName[split[1].uppercase()]
-                ?: return logErrorNull("cannot parse animation: ${raw} (invalid slot ${split[1]})")
+                ?: return GunEngine.logErrorNull("cannot parse animation: ${raw} (invalid slot ${split[1]})")
             val data = split[2].toIntOrNull()
-                ?: return logErrorNull("cannot parse animation: ${raw} (invalid data ${split[2]})")
+                ?: return GunEngine.logErrorNull("cannot parse animation: ${raw} (invalid data ${split[2]})")
             val delay = split[3].toIntOrNull() ?: 0
 
             return AnimationFrame(ItemData(material, data), slot, delay)
@@ -42,11 +46,13 @@ data class AnimationFrame(
     }
 
     fun play(player: Player, weaponType: WeaponType) {
+        if(item == null) return
         player.sendEquipmentSelf(weaponType.item.itemStack.materialAndData(item), slot)
     }
 
     override fun toString(): String {
-        return "${item.material}-${slot}-${item.data}-${delay}"
+        return if(item == null) "$dummyKey-$delay"
+        else "${item.material}-${slot}-${item.data}-${delay}"
     }
 
 

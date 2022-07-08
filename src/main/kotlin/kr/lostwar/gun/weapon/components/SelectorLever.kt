@@ -1,14 +1,14 @@
 package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.GunEngine
-import kr.lostwar.gun.weapon.Weapon
-import kr.lostwar.gun.weapon.WeaponComponent
-import kr.lostwar.gun.weapon.WeaponPropertyType
-import kr.lostwar.gun.weapon.WeaponType
+import kr.lostwar.gun.weapon.*
 import kr.lostwar.util.ExtraUtil
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.SoundInfo
+import org.bukkit.Sound
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.event.Event
+import org.bukkit.event.player.PlayerSwapHandItemsEvent
 
 class SelectorLever(
     config: ConfigurationSection?,
@@ -35,7 +35,9 @@ class SelectorLever(
     val useSelector: Boolean = getBoolean("useSelector", parent?.useSelector, false)
     val selectors: List<SelectorType>
     val defaultSelector: SelectorType
-    val leverSound: SoundClip = getSoundClip("leverSound", parent?.leverSound)
+    val leverSound: SoundClip = getSoundClip("leverSound", parent?.leverSound,
+        SoundClip(listOf(SoundInfo(Sound.BLOCK_IRON_TRAPDOOR_CLOSE, pitch = 2f)))
+    )
 
     init {
         if(!useSelector && parent?.useSelector != true) {
@@ -71,6 +73,22 @@ class SelectorLever(
 
         }
     }
+
+    private val onSwap = WeaponPlayerEventListener(PlayerSwapHandItemsEvent::class.java) { event ->
+        val weapon = this.weapon ?: return@WeaponPlayerEventListener
+        event.isCancelled = true
+        if(weapon.primaryAction != null) return@WeaponPlayerEventListener
+
+        val oldType = weapon.selector
+        val newType = selectors[(selectors.indexOf(oldType) + 1) % selectors.size]
+
+        weapon.selector = newType
+        leverSound.playToPlayer(player)
+    }
+
+    override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
+        onSwap,
+    )
 
     override fun onInstantiate(weapon: Weapon) {
         weapon.registerNotNull(SELECTOR, defaultSelector)

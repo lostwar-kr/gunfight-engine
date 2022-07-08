@@ -90,6 +90,8 @@ class WeaponPlayer(
         fun PlayerArmorStandManipulateEvent.onInteractEntity() = callEventOnWeaponPlayer(player)
         @EventHandler
         fun PlayerDropItemEvent.onDrop() = callEventOnWeaponPlayer(player)
+        @EventHandler
+        fun PlayerSwapHandItemsEvent.onSwap() = callEventOnWeaponPlayer(player)
 
         private inline fun <reified T : Event> T.callEventOnWeaponPlayer(player: Player) {
             val weaponPlayer = player.weaponPlayer

@@ -2,22 +2,17 @@ package kr.lostwar.util
 
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.components.SelectorLever
+import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.persistence.PersistentDataAdapterContext
 import org.bukkit.persistence.PersistentDataType
-
-inline fun <reified T> logErrorNull(message: String, stackTrace: Boolean = false): T? = run {
-    GunEngine.logWarn(message)
-    if(stackTrace)
-        Exception().stackTrace.forEach { GunEngine.logWarn(it.toString()) }
-    return null
-}
+import org.bukkit.util.Vector
 
 object ExtraUtil {
 
     fun <T> List<T>.joinToString()
             = joinToString(", ", "[", "]") { it.toString() }
 
-    class PrimitivePersistentDataType<T> constructor(
+    class PrimitivePersistentDataType<T : Any> constructor(
         private val primitiveType: Class<T>
     ) : PersistentDataType<T, T> {
         override fun getPrimitiveType(): Class<T> {
@@ -52,4 +47,11 @@ object ExtraUtil {
             return enumConstants[index.toInt()]
         }
     }
+
+    private val armorStandOffsetMap = mapOf<EquipmentSlot, Vector>(
+        EquipmentSlot.HAND to Vector(0.3125, 1.375, 0.0),
+        EquipmentSlot.OFF_HAND to Vector(-0.3125, 1.375, 0.0),
+        EquipmentSlot.HEAD to Vector(0.0, 1.4375, 0.0),
+    )
+    val EquipmentSlot.armorStandOffset: Vector; get() = armorStandOffsetMap[this] ?: Vector()
 }

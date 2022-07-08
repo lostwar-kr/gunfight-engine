@@ -97,9 +97,6 @@ abstract class WeaponComponent(
     protected fun getString(key: String, parentDef: String?, def: String? = null)
         = get(key, parentDef, def, ConfigurationSection::getString)
 
-    /**
-     * ddd
-     */
     protected fun getStringList(key: String, parentDef: List<String>?, def: List<String> = emptyList()): List<String>
         = get(key, parentDef, def) { k -> if(isList(k)) getStringList(k) else null }!!
 

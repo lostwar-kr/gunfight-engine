@@ -51,8 +51,6 @@ class ShootAction(
             SelectorLever.SelectorType.SINGLE -> {
                 state = State.SINGLE_WAIT_DELAY
                 delay = shoot.shootDelay
-                singleShoot()
-                trigger()
                 WeaponAnimationDetermineEvent.Type.SINGLE_SHOOT
                     .create(player, shoot.animation)
                     .callEventAndGetClip()
@@ -61,11 +59,11 @@ class ShootAction(
             SelectorLever.SelectorType.BURST -> {
                 leftBurst = burst!!.amount
                 state = State.BURST_PER_SHOT
-                trigger()
+                delay = burst.shootDelay
             }
             SelectorLever.SelectorType.FULL_AUTO -> {
                 state = State.FULL_AUTO_PER_SHOT
-                trigger()
+                delay = fullAuto!!.delay
                 // 상황에 따라 애니메이션 바뀌도록
                 WeaponAnimationDetermineEvent.Type.FULL_AUTO_SHOOT_LOOP
                     .create(player, fullAuto!!.shootAnimationLoop)
@@ -77,6 +75,8 @@ class ShootAction(
                 return
             }
         }
+        singleShoot()
+        trigger()
     }
     private fun singleShoot() {
         with(shoot) { weapon.player?.shoot(this@ShootAction) }

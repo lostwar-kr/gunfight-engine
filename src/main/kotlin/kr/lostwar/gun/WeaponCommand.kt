@@ -11,7 +11,7 @@ import kr.lostwar.util.ui.text.errorMessage
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
-object WeaponCommand : MultiCommand("fullmetaljacket", "fullmetaljacket", aliases = listOf("fmj")) {
+object WeaponCommand : MultiCommand("fullmetaljacket", "fullmetaljacket", aliases = listOf("fmj", "fm")) {
 
     private val reloadCommand = object : OperatorSubCommand("reload") {
         override fun SubCommandExecuteData.execute() {

@@ -1,6 +1,7 @@
 package kr.lostwar
 
 import kr.lostwar.GunfightEngine.Companion.plugin
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.util.Config
 import kr.lostwar.util.ui.text.StringUtil.colored
 import kr.lostwar.util.ui.text.console
@@ -51,4 +52,10 @@ abstract class Engine(val name: String) {
     }
     fun logWarn(message: String) = log("&e$message")
 
+    inline fun <reified T> logErrorNull(message: String, stackTrace: Boolean = false): T? = run {
+        logWarn(message)
+        if(stackTrace)
+            Exception().stackTrace.forEach { logWarn(it.toString()) }
+        return null
+    }
 }

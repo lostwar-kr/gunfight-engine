@@ -1,5 +1,6 @@
 package kr.lostwar.gun.weapon
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponPropertyType.Companion.get
 import kr.lostwar.gun.weapon.WeaponPropertyType.Companion.set
 import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
@@ -7,7 +8,6 @@ import kr.lostwar.gun.weapon.event.WeaponActionStartEvent
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
-import kr.lostwar.util.logErrorNull
 import kr.lostwar.util.ui.ComponentUtil.appendText
 import kr.lostwar.util.ui.ComponentUtil.green
 import kr.lostwar.util.ui.ComponentUtil.white
@@ -147,15 +147,15 @@ class Weapon(
             val itemContainer = meta.persistentDataContainer
             val weaponContainer = itemContainer.get(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER) ?: return null
             val key = weaponContainer[WeaponPropertyType.KEY]
-                ?: return logErrorNull("cannot Weapon::takeOut from $item: container is valid, but cannot find key")
+                ?: return GunEngine.logErrorNull("cannot Weapon::takeOut from $item: container is valid, but cannot find key")
             val info = WeaponType[key]
-                ?: return logErrorNull("cannot Weapon::takeOut from $item: find key, but invalid weapon")
+                ?: return GunEngine.logErrorNull("cannot Weapon::takeOut from $item: find key, but invalid weapon")
 
             val weapon = Weapon(info)
             for(property in weapon.propertyMap.values) {
                 // takeOut에 실패할 수도 있음 (UUID를 못가져온다던가)
                 if(!property.takeOut(weaponContainer)) {
-                    return logErrorNull("cannot Weapon::takeOut from $item: valid weapon info, invalid identifier")
+                    return GunEngine.logErrorNull("cannot Weapon::takeOut from $item: valid weapon info, invalid identifier")
                 }
             }
             return weapon
