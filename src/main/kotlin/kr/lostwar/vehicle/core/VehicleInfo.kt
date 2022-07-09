@@ -5,6 +5,8 @@ import kr.lostwar.util.SoundClip
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
 import kr.lostwar.vehicle.VehicleEngine
+import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
+import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfoList
 import org.bukkit.configuration.ConfigurationSection
 import org.jetbrains.annotations.Contract
 import java.io.File
@@ -17,16 +19,24 @@ abstract class VehicleInfo(
     val configFile: Config,
     val parent : VehicleInfo?,
 ) {
-    private val parentVehicleKey = config.getString("parent")
-    var loaded = false
-    var valid = true
-
     val type: VehicleType<*> = get("type", parent?.type) {
         VehicleType.getTypeOrNull(getString(it)) ?: error("cannot parse vehicle type: ${getString(it)}")
     }!!
     val displayName: String = getString("displayName", parent?.displayName, key)!!
 
+    val models: List<VehicleModelInfo> = get("model", parent?.models, emptyList()) { parentKey ->
+        val section = getConfigurationSection(parentKey) ?: return@get null
+        val parent = this@VehicleInfo.parent
+        val parentModels = parent?.models?.associateBy { it.key } ?: emptyMap()
+        section.getKeys(false).mapNotNull { key -> section.getModelInfo(key, parentModels[key]) }
+    }!!
 
+    val seats: List<VehicleModelInfo> = get("seat", parent?.seats, emptyList()) {parentKey ->
+        val parent = this@VehicleInfo.parent
+        getModelInfoList(parentKey, parent?.seats ?: emptyList())
+    }!!
+
+    val health: Double = getDouble("entity.health", parent?.health)
 
     @Contract("_, _, !null -> !null")
     protected fun <T : Any> get(key: String, parentDef: T?, def: T? = null, getter: ConfigurationSection.(key: String) -> T?): T? {
@@ -145,15 +155,28 @@ abstract class VehicleInfo(
                         continue
                     }
                     val parentVehicle = byKey[registeredInfo.parentKey] ?: continue
-                    val vehicle = load(key, registeredInfo.config, registeredInfo.configFile, parentVehicle) ?: return
-                    byKey[key] = vehicle
+                    try {
+                        val vehicle = load(key, registeredInfo.config, registeredInfo.configFile, parentVehicle) ?: return
+                        byKey[key] = vehicle
+                        ++count
+                    } catch (e: Exception) {
+                        VehicleEngine.logWarn("차량 ${key} 불러오는 중 예외 발생: ${e.message}")
+                        e.stackTrace.forEach { VehicleEngine.logWarn(it.toString()) }
+                    }
+                }
+                ++level
+                if(level >= 50) {
+                    VehicleEngine.logWarn("50level 이상 차량 상속 중단, 남은 차량 ${childVehicles.size}개")
+                    childVehicles.forEach { VehicleEngine.logWarn(" - ${it.key} : ${registeredVehicles[it.key]?.parentKey}") }
                 }
             }
         }
 
         private fun load(key: String, section: ConfigurationSection, configFile: Config, parent: VehicleInfo?): VehicleInfo? {
             val typeKey = section.getString("type")
-            val type = (VehicleType.getTypeOrNull(typeKey) ?: parent?.type) as? VehicleType<VehicleInfo>
+            val type = ((VehicleType.getTypeOrNull(typeKey) ?: parent?.type) as? VehicleType<VehicleInfo>)
+                    // 부모하고 아예 다르거나 부모하고 타입이 같아야 함
+                ?.takeIf { parent == null || it == parent.type }
                 ?: return VehicleEngine.logErrorNull("유효하지 않은 VehicleType: ${typeKey}")
 
             return type.create(key, section, configFile, parent)
