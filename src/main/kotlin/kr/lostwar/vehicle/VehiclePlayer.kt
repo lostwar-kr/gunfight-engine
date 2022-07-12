@@ -84,7 +84,7 @@ class VehiclePlayer(
             ) 0f
             else side
         isLeft = sideInput > 0
-        isRight = sideInput > 0
+        isRight = sideInput < 0
 
         isSpace =
             if(VehicleControl.SPACE.isBlocking()) false
@@ -98,5 +98,8 @@ class VehiclePlayer(
     var isBackward = false; private set
     var isLeft = false; private set
     var isRight = false; private set
+
+
+    var isReseating = false
 
 }

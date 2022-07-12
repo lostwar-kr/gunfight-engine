@@ -6,7 +6,7 @@ import com.comphenix.protocol.events.PacketEvent
 import kr.lostwar.GunfightEngine
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 
-class SteerListener : PacketAdapter(GunfightEngine.plugin, PacketType.Play.Client.STEER_VEHICLE) {
+object SteerListener : PacketAdapter(GunfightEngine.plugin, PacketType.Play.Client.STEER_VEHICLE) {
 
     override fun onPacketReceiving(event: PacketEvent) {
         if(event.isPlayerTemporary) return

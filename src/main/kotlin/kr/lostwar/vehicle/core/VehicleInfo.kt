@@ -127,6 +127,7 @@ abstract class VehicleInfo(
                 }
             }
             loadVehicles()
+            updateVehicleEntities()
         }
         private fun register(key: String, section: ConfigurationSection, configFile: Config) {
             if(key in registeredVehicles) {
@@ -186,6 +187,14 @@ abstract class VehicleInfo(
             val vehicle = type.create(key, section, configFile, parent)
             VehicleEngine.log("차량 불러옴: &a${key}")
             return vehicle
+        }
+
+        private fun updateVehicleEntities() {
+            VehicleEntity.byUUID.forEach { id, entity ->
+                val key = entity.base.key
+                val newBase = byKey[key] ?: return@forEach
+                entity.base = newBase
+            }
         }
 
     }

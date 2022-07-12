@@ -59,25 +59,14 @@ class VehicleModelInfo(
 
             val rawOffset = (get("offset") ?: default?.localPosition?.toString() ?: VectorUtil.ZERO.toVectorString()) as? String
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset")
-            val rawOffsetSplit = rawOffset.split(',').map { it.trim() }.takeIf { it.size >= 3 }
+            val offset = VectorUtil.fromVectorString(rawOffset)
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset ${rawOffset}")
-            val offsetX = rawOffsetSplit[0].toDoubleOrNull()
-                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset ${rawOffset}")
-            val offsetY = rawOffsetSplit[1].toDoubleOrNull()
-                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset ${rawOffset}")
-            val offsetZ = rawOffsetSplit[2].toDoubleOrNull()
-                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset ${rawOffset}")
-            val offset = Vector(offsetX, offsetY, offsetZ)
 
             val rawHitbox = (get("hitbox") ?: default?.hitbox?.toString() ?: VehicleHitbox.emptyHitbox.toString()) as? String
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid hitbox")
-            val rawHitboxSplit = rawOffset.split(',').map { it.trim() }.takeIf { it.size >= 2 }
+            val hitbox = VehicleHitbox.parseFromString(rawHitbox)
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid hitbox ${rawHitbox}")
-            val hitboxWidth = rawHitboxSplit[0].toFloatOrNull()
-                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid hitbox ${rawHitbox}")
-            val hitboxHeight = rawHitboxSplit[1].toFloatOrNull()
-                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid hitbox ${rawHitbox}")
-            val hitbox = VehicleHitbox(hitboxWidth, hitboxHeight)
+//            VehicleEngine.log("${key} - hitbox: ${hitbox}")
 
             val rawItem = (get("item") ?: default?.item?.toString() ?: ItemData(Material.AIR).toString()) as? String
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid item")

@@ -1,5 +1,6 @@
 package kr.lostwar.vehicle
 
+import com.comphenix.protocol.ProtocolLibrary
 import kr.lostwar.Engine
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.vehicle.core.VehicleEntity
@@ -12,12 +13,14 @@ object VehicleEngine : Engine("andoo") {
         VehicleEntity.Companion,
     )
     override val commands: List<Command> = listOf(
-
+        VehicleCommand,
     )
     override fun onLoad(reload: Boolean) {
         if(reload) {
             log("차량 불러오기 ...")
             loadVehicles()
+        }else{
+            ProtocolLibrary.getProtocolManager().addPacketListener(SteerListener)
         }
     }
 

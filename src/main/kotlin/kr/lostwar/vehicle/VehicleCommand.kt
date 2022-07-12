@@ -1,6 +1,5 @@
 package kr.lostwar.vehicle
 
-import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.util.command.CommandUtil.findStartsWithOrContains
 import kr.lostwar.util.command.MultiCommand
 import kr.lostwar.util.command.OperatorSubCommand
