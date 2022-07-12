@@ -7,6 +7,7 @@ import kr.lostwar.util.item.ItemData.Companion.getItemData
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfoList
+import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
 import org.jetbrains.annotations.Contract
 import java.io.File
@@ -24,11 +25,11 @@ abstract class VehicleInfo(
     }!!
     val displayName: String = getString("displayName", parent?.displayName, key)!!
 
-    val models: List<VehicleModelInfo> = get("model", parent?.models, emptyList()) { parentKey ->
+    val models: Map<String, VehicleModelInfo> = get("model", parent?.models, emptyMap()) { parentKey ->
         val section = getConfigurationSection(parentKey) ?: return@get null
         val parent = this@VehicleInfo.parent
-        val parentModels = parent?.models?.associateBy { it.key } ?: emptyMap()
-        section.getKeys(false).mapNotNull { key -> section.getModelInfo(key, parentModels[key]) }
+        val parentModels = parent?.models ?: emptyMap()
+        section.getKeys(false).mapNotNull { key -> section.getModelInfo(key, parentModels[key]) }.associateBy { it.key }
     }!!
 
     val seats: List<VehicleModelInfo> = get("seat", parent?.seats, emptyList()) {parentKey ->
@@ -78,9 +79,12 @@ abstract class VehicleInfo(
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
 
+    open fun spawn(location: Location, decoration: Boolean = false) = VehicleEntity(this, location, decoration)
+
+
     companion object {
         private val registeredVehicles = HashMap<String, RegisteredVehicleInfo>()
-        private val byKey = HashMap<String, VehicleInfo>()
+        val byKey = HashMap<String, VehicleInfo>()
         fun load() {
             registeredVehicles.clear()
             byKey.clear()
@@ -138,7 +142,7 @@ abstract class VehicleInfo(
         }
 
         private fun loadVehicles() {
-            val childVehicles = HashMap(registeredVehicles)
+            val childVehicles = HashMap(registeredVehicles.filter { it.key !in byKey })
             var count = 0
             var level = 0
             while(childVehicles.size > 0) {
@@ -175,11 +179,13 @@ abstract class VehicleInfo(
         private fun load(key: String, section: ConfigurationSection, configFile: Config, parent: VehicleInfo?): VehicleInfo? {
             val typeKey = section.getString("type")
             val type = ((VehicleType.getTypeOrNull(typeKey) ?: parent?.type) as? VehicleType<VehicleInfo>)
-                    // 부모하고 아예 다르거나 부모하고 타입이 같아야 함
+                    // 타입 정의가 없거나, 부모가 없거나 부모하고 타입이 같아야 함
                 ?.takeIf { parent == null || it == parent.type }
                 ?: return VehicleEngine.logErrorNull("유효하지 않은 VehicleType: ${typeKey}")
 
-            return type.create(key, section, configFile, parent)
+            val vehicle = type.create(key, section, configFile, parent)
+            VehicleEngine.log("차량 불러옴: &a${key}")
+            return vehicle
         }
 
     }

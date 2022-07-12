@@ -16,11 +16,11 @@ import org.bukkit.util.Vector
 class VehicleModelInfo(
     val key: String,
     val type: EquipmentSlot = EquipmentSlot.HEAD,
-    private val offset: Vector = Vector(),
+    val localPosition: Vector = Vector(),
     val hitbox: VehicleHitbox = VehicleHitbox.emptyHitbox,
     val item: ItemData = ItemData(Material.AIR),
+    val isSmall: Boolean = false,
 ) {
-    val localPosition: Vector; get() = offset.clone()
 
     companion object {
         val defaultModelInfo = VehicleModelInfo("default")
@@ -32,10 +32,18 @@ class VehicleModelInfo(
                 catch (e: Exception){ null }
             }
             ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid type ${section.getString("type")}")
-            val offset = section.getBukkitVector("offset") ?: default?.offset ?: VectorUtil.ZERO
+            val offset = section.getBukkitVector("offset") ?: default?.localPosition ?: VectorUtil.ZERO
             val hitbox = section.getVehicleHitbox("hitbox") ?: default?.hitbox ?: VehicleHitbox.emptyHitbox
             val item = section.getItemData("item", default?.item ?: ItemData(Material.AIR))!!
-            return VehicleModelInfo(key, type, offset, hitbox, item)
+            val small = section.getBoolean("small", default?.isSmall ?: false)
+            return VehicleModelInfo(
+                key,
+                type,
+                offset,
+                hitbox,
+                item,
+                small,
+            )
         }
         fun ConfigurationSection.getModelInfoList(key: String, default: List<VehicleModelInfo> = emptyList()): List<VehicleModelInfo> {
             return getMapList(key)
@@ -49,7 +57,7 @@ class VehicleModelInfo(
                 catch (e: Exception){ null }
             ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid type ${rawType}")
 
-            val rawOffset = (get("offset") ?: default?.offset?.toString() ?: VectorUtil.ZERO.toVectorString()) as? String
+            val rawOffset = (get("offset") ?: default?.localPosition?.toString() ?: VectorUtil.ZERO.toVectorString()) as? String
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset")
             val rawOffsetSplit = rawOffset.split(',').map { it.trim() }.takeIf { it.size >= 3 }
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid offset ${rawOffset}")
@@ -76,7 +84,17 @@ class VehicleModelInfo(
             val item = toItemData(rawItem)
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid item ${rawItem}")
 
-            return VehicleModelInfo(key, type, offset, hitbox, item)
+            val small = (get("small") ?: default?.isSmall ?: false) as? Boolean
+                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid isSmall")
+
+            return VehicleModelInfo(
+                key,
+                type,
+                offset,
+                hitbox,
+                item,
+                small,
+            )
         }
     }
 }

@@ -2,13 +2,14 @@ package kr.lostwar.vehicle
 
 import kr.lostwar.Engine
 import kr.lostwar.gun.GunEngine
+import kr.lostwar.vehicle.core.VehicleEntity
 import kr.lostwar.vehicle.core.VehicleInfo
 import org.bukkit.command.Command
 import org.bukkit.event.Listener
 
 object VehicleEngine : Engine("andoo") {
     override val listeners: List<Listener> = listOf(
-
+        VehicleEntity.Companion,
     )
     override val commands: List<Command> = listOf(
 
@@ -28,4 +29,6 @@ object VehicleEngine : Engine("andoo") {
     fun loadVehicles() {
         VehicleInfo.load()
     }
+
+
 }

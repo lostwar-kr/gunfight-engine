@@ -1,5 +1,6 @@
 package kr.lostwar.gun.weapon.components
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.DelayAction
 import kr.lostwar.gun.weapon.actions.ShootAction
@@ -8,7 +9,6 @@ import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.SoundClip
-import kr.lostwar.util.logErrorNull
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.localToWorld
 import kr.lostwar.util.math.VectorUtil.toVectorString
@@ -36,7 +36,7 @@ class Shoot(
     val adjustDirectionThickness: Double = getDouble("adjustDirectionThickness", parent?.adjustDirectionThickness, 1.0)
     val adjustDirectionRange: Double = getDouble("adjustDirectionRange", parent?.adjustDirectionRange, 100.0)
     val shootPositionOffset: List<Vector> = getStringList("shootPositionOffset", parent?.shootPositionOffset?.map { it.toVectorString() })
-        .mapNotNull { VectorUtil.fromVectorString(it) ?: logErrorNull("cannot parse offset vector: $it") }
+        .mapNotNull { VectorUtil.fromVectorString(it) ?: GunEngine.logErrorNull("cannot parse offset vector: $it") }
 
     private val onClick = WeaponPlayerEventListener(WeaponClickEvent::class.java) { event ->
         if(event.clickType != ClickType.RIGHT) {

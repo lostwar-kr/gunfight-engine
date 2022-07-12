@@ -27,6 +27,8 @@ class VehicleHitbox(
         }
     }
 
+    fun isEmpty() = width <= 0f && height <= 0f
+
     override fun toString(): String {
         return "$width, $height"
     }
