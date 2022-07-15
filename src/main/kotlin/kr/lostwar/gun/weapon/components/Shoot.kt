@@ -31,7 +31,7 @@ class Shoot(
     val shootCount: Int = getInt("shootCount", parent?.shootCount, 1)
     val sound: SoundClip = getSoundClip("sound", parent?.sound)
     val animation: AnimationClip = getAnimationClip("animation", parent?.animation)
-    val clickTicks: Int = getInt("clickTicks", parent?.clickTicks, 4)
+    val clickTicks: Int = getInt("clickTicks", parent?.clickTicks, 6)
     val adjustDirectionByShootPositionOffset: Boolean = getBoolean("adjustDirectionByShootPositionOffset", parent?.adjustDirectionByShootPositionOffset, true)
     val adjustDirectionThickness: Double = getDouble("adjustDirectionThickness", parent?.adjustDirectionThickness, 1.0)
     val adjustDirectionRange: Double = getDouble("adjustDirectionRange", parent?.adjustDirectionRange, 100.0)

@@ -5,23 +5,65 @@ import kr.lostwar.gun.setting.CustomMaterialSet
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
-import kr.lostwar.gun.weapon.components.HitBlockResult.Companion.getResult
+import kr.lostwar.gun.weapon.components.HitBlock.Companion.getResult
+import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
+import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.util.block.BlockUtil
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.entity.Entity
+import org.bukkit.entity.LivingEntity
 import org.bukkit.util.Vector
 
-class HitBlock(
+class Hit(
     config: ConfigurationSection?,
     weapon: WeaponType,
-    parent: HitBlock?,
+    parent: Hit?,
 ) : WeaponComponent(config, weapon, parent, true) {
 
-    private val interactionMap: Map<HitBlockInteraction, HitBlockResult> = get("", parent?.interactionMap, emptyMap()) { _ ->
-        val map = HashMap<HitBlockInteraction, HitBlockResult>(parent?.interactionMap)
+    val entityDamage: Double = getDouble("entity.damage", parent?.entityDamage)
+    val entityResistance: Double = getDouble("entity.resistance", parent?.entityResistance, 1.0)
+    val headShotDamageAdd: Double = getDouble("entity.headShot.damageAdd", parent?.headShotDamageAdd, 0.0)
+    val headShotDamageMultiply: Double = getDouble("entity.headShot.damageMultiply", parent?.headShotDamageMultiply, 2.0)
+
+    fun WeaponPlayer.hitEntity(
+        victim: LivingEntity,
+        damage: Double = this@Hit.entityDamage,
+        damageSource: Entity? = null,
+        location: Location? = null,
+        isHeadShot: Boolean = false,
+        isPiercing: Boolean = false,
+        damageModifier: (Double) -> Double = { it },
+    ): WeaponHitEntityEvent.DamageResult {
+        val originalDamage = (if(isHeadShot) damage * headShotDamageMultiply else damage) + (if(isHeadShot) headShotDamageAdd else 0.0)
+        val finalDamage = damageModifier(originalDamage)
+        val event = WeaponHitEntityEvent(this,
+            victim,
+            finalDamage,
+            damageSource,
+            location,
+            isHeadShot,
+            isPiercing
+        )
+            .callEventOnHoldingWeapon(true)
+        if(event.isCancelled) {
+            return event.result
+        }
+        val damage = event.damage
+        if(victim.health - damage <= 0) {
+            victim.killer = player
+        }
+        victim.damage(damage)
+        return event.result
+    }
+
+
+    private val interactionMap: Map<HitBlockInteraction, HitBlock> = get("", parent?.interactionMap, emptyMap()) { _ ->
+        val map = HashMap<HitBlockInteraction, HitBlock>(parent?.interactionMap)
         for(key in getKeys(false)) {
+            if(key == "entity") continue
             val interaction = HitBlockInteraction.registeredInteractionMap[key]
             if(interaction == null) {
                 GunEngine.logWarn("invalid interaction key ${key} while loading $weapon")
@@ -33,7 +75,7 @@ class HitBlock(
     }!!
 
 
-    fun WeaponPlayer.hit(location: Location, block: Block, hitNormal: Vector): HitBlockResult {
+    fun WeaponPlayer.hitBlock(location: Location, block: Block, hitNormal: Vector): HitBlock {
         val type = block.type
         var isEmptySpace: Boolean? = null
         for(interaction in HitBlockInteraction.registeredInteraction) {
@@ -50,19 +92,19 @@ class HitBlock(
                     continue
                 }
             }
-            val outputResult = interaction.onHit(this, this@HitBlock, inputResult, block, hitNormal)
+            val outputResult = interaction.onHit(this, this@Hit, inputResult, block, hitNormal)
             return outputResult
         }
 
         // 여기까지 올 일은 없겠지만 ...
         val fallbackInteraction = HitBlockInteraction.builtInCollideInteraction
         val fallbackResult = interactionMap[fallbackInteraction] ?: fallbackInteraction.defaultResult
-        return fallbackInteraction.onHit(this, this@HitBlock, fallbackResult, block, hitNormal)
+        return fallbackInteraction.onHit(this, this@Hit, fallbackResult, block, hitNormal)
     }
 
 }
 
-data class HitBlockResult(
+data class HitBlock(
     val types: Set<Material>,
     val checkIsEmptySpace: Boolean,
     val blockRay: Boolean,
@@ -72,7 +114,7 @@ data class HitBlockResult(
 ) {
     operator fun contains(material: Material) = checkContains(material)
     companion object {
-        fun ConfigurationSection.getResult(key: String, default: HitBlockResult): HitBlockResult {
+        fun ConfigurationSection.getResult(key: String, default: HitBlock): HitBlock {
             val section = getConfigurationSection(key) ?: return default
 
             val checkIsEmptySpace = section.getBoolean("checkIsEmptySpace", default.checkIsEmptySpace)
@@ -90,10 +132,10 @@ data class HitBlockResult(
                     set
                 }
 
-            return HitBlockResult(types, checkIsEmptySpace, blockRay, pierceSolid, resistance, default.checkContains)
+            return HitBlock(types, checkIsEmptySpace, blockRay, pierceSolid, resistance, default.checkContains)
         }
 
-        private fun MutableSet<Material>.apply(rawType: String, default: HitBlockResult) {
+        private fun MutableSet<Material>.apply(rawType: String, default: HitBlock) {
             if(rawType == "default") {
                 addAll(default.types)
                 return
@@ -115,17 +157,17 @@ data class HitBlockResult(
 
 class HitBlockInteraction(
     val name: String,
-    val defaultResult: HitBlockResult,
+    val defaultResult: HitBlock,
     val onHit: WeaponPlayer.(
-        hitBlock: HitBlock,
-        result: HitBlockResult,
+        hitBlock: Hit,
+        result: HitBlock,
         block: Block,
         hitNormal: Vector
-    ) -> HitBlockResult = { _, result, _, _ -> result }
+    ) -> HitBlock = { _, result, _, _ -> result }
 ) {
 
     companion object {
-        val builtInCollideInteraction = HitBlockInteraction("collide", HitBlockResult(
+        val builtInCollideInteraction = HitBlockInteraction("collide", HitBlock(
             emptySet(),
             true,
             true,
@@ -133,17 +175,18 @@ class HitBlockInteraction(
             1.0,
             { true }
         )) { hitBlock, result, block, hitNormal ->
+
             result
         }
         private val interactions = mutableListOf<HitBlockInteraction>(
-            HitBlockInteraction("ignore", HitBlockResult(
+            HitBlockInteraction("ignore", HitBlock(
                 CustomMaterialSet.completelyPasssable,
                 false,
                 false,
                 false,
                 0.0
             )),
-            HitBlockInteraction("glass", HitBlockResult(
+            HitBlockInteraction("glass", HitBlock(
                 CustomMaterialSet.glasses,
                 false,
                 false,
@@ -153,7 +196,7 @@ class HitBlockInteraction(
                 block.breakNaturally()
                 result
             },
-            HitBlockInteraction("pierce", HitBlockResult(
+            HitBlockInteraction("pierce", HitBlock(
                 CustomMaterialSet.passable,
                 true,
                 false,
@@ -176,7 +219,7 @@ class HitBlockInteraction(
     }
 
     override fun equals(other: Any?): Boolean {
-        if(other is HitBlock) {
+        if(other is Hit) {
             return name == other.name
         }
         return super.equals(other)

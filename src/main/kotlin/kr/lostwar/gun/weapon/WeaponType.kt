@@ -83,8 +83,7 @@ class WeaponType(
     var fullAuto: FullAuto? = null; private set
     var burst: Burst? = null; private set
     lateinit var selectorLever: SelectorLever; private set
-    lateinit var hitEntity: HitEntity; private set
-    lateinit var hitBlock: HitBlock; private set
+    lateinit var hit: Hit; private set
     lateinit var spread: Spread; private set
     var shoot: Shoot? = null; private set
     var zoom: Zoom? = null; private set
@@ -93,8 +92,7 @@ class WeaponType(
         burst = getComponent(Burst::class.java)
         fullAuto = getComponent(FullAuto::class.java)
         selectorLever = getComponent(SelectorLever::class.java)!!
-        hitEntity = getComponent(HitEntity::class.java)!!
-        hitBlock = getComponent(HitBlock::class.java)!!
+        hit = getComponent(Hit::class.java)!!
         spread = getComponent(Spread::class.java)!!
         ammo = getComponent(Ammo::class.java)
         shoot = getComponent(Shoot::class.java)

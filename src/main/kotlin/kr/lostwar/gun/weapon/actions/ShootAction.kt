@@ -142,7 +142,6 @@ class ShootAction(
             }
             State.BURST_WAIT_DELAY -> {
                 if(!clicking) {
-                    clicking = false
                     complete()
                     return
                 }
@@ -152,7 +151,6 @@ class ShootAction(
             }
             State.FULL_AUTO_PER_SHOT -> {
                 if(!clicking) {
-                    clicking = false
                     complete()
                     return
                 }
