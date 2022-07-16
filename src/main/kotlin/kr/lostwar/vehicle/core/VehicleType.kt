@@ -6,7 +6,7 @@ import org.bukkit.configuration.ConfigurationSection
 
 class VehicleType<T : VehicleInfo>(
     val name: String,
-    clazz: Class<T>,
+    val clazz: Class<T>,
 //    val constructor: (key: String, config: ConfigurationSection, configFile: Config, parent: T?) -> T
 ) {
     private val reflectConstructor = clazz.getConstructor(
@@ -21,6 +21,10 @@ class VehicleType<T : VehicleInfo>(
     }
     fun create(key: String, config: ConfigurationSection, configFile: Config, parent: T?): T {
         return constructor(key, config, configFile, parent)
+    }
+
+    fun cast(info: VehicleInfo): T {
+        return info as T
     }
 
     companion object {

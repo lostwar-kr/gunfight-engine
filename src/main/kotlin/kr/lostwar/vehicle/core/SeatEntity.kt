@@ -8,7 +8,7 @@ import org.bukkit.entity.Player
 class SeatEntity(
     var info: VehicleModelInfo,
     val entity: ArmorStand,
-    val vehicle: VehicleEntity,
+    val vehicle: VehicleEntity<*>,
 ) : ArmorStand by entity {
 
     operator fun component1() = info

@@ -7,3 +7,5 @@
 - 최적화됨
 
 의존성으로 [pigeon-library](https://github.com/Kobins/pigeon-library) 가짐, 따로 repository 없기때문에 빌드 시 로컬에 mvn install 필요
+
+죽은 로스트워 기리기 위해 패키지 도메인은 [kr.lostwar](https://lostwar.kr/)로 함 ㅎㅎ;

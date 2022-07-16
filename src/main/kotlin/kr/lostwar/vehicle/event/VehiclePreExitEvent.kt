@@ -8,7 +8,7 @@ import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
 
 class VehiclePreExitEvent(
-    vehicleEntity: VehicleEntity,
+    vehicleEntity: VehicleEntity<*>,
     val player: Player,
     val riding: ArmorStand,
 ) : VehicleEvent(vehicleEntity), Kancellable {

@@ -86,7 +86,7 @@ class Hitscan(
             else ((farThickness - nearThickness)/nearThicknessRange) * distance + moveLength
         }
 
-        GunEngine.log("entity pre-raycast:")
+//        GunEngine.log("entity pre-raycast:")
         // 최적화된 entity raycast
         // 전체 엔티티 검사를 딱 한 번만 함
         val entities = world.livingEntities.mapNotNull { target ->
@@ -114,13 +114,13 @@ class Hitscan(
 //                aabb.getOutline(2),
 //                Particle.DustOptions(Color.RED, 1f),
 //            )
-            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")
+//            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")
             target to (dot to hitResult)
         }.sortedBy { it.second.first } // 거리 기준 정렬
         val entitiesSize = entities.size
-        GunEngine.log("hitted entity count: ${entitiesSize}")
+//        GunEngine.log("hitted entity count: ${entitiesSize}")
 
-        GunEngine.log("block raycast:")
+//        GunEngine.log("block raycast:")
         var currentEntityIndex = 0
         var currentDistance = entities.firstOrNull()?.second?.first ?: 0.0
         var isBlockPierced = false
@@ -133,19 +133,19 @@ class Hitscan(
             maximumRange,
             FluidCollisionMode.NEVER,
         ) { blockDistance, blockHitResult ->
-            GunEngine.log("- block onHit(${blockDistance}, ${blockHitResult})")
+//            GunEngine.log("- block onHit(${blockDistance}, ${blockHitResult})")
             // 블록 충돌 이전의 모든 엔티티 충돌 처리
             while(currentEntityIndex < entitiesSize && blockDistance > currentDistance) {
                 val target = entities[currentEntityIndex].first
 
                 val rangeModifier = calculateRangeModifier(currentDistance)
-                GunEngine.log("  * entity hit[${currentEntityIndex}](${target}, ${currentDistance}, ${rangeModifier})")
+//                GunEngine.log("  * entity hit[${currentEntityIndex}](${target}, ${currentDistance}, ${rangeModifier})")
                 if(rangeModifier <= 0){
-                    GunEngine.log("  ! entity hit stop by rangeModifier smaller than zero")
+//                    GunEngine.log("  ! entity hit stop by rangeModifier smaller than zero")
                     return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.STOP
                 }
                 if(rangeModifier + resistanceFactor <= 0){
-                    GunEngine.log("  ! entity hit stop by rangeModifier + resistanceFactor smaller than zero")
+//                    GunEngine.log("  ! entity hit stop by rangeModifier + resistanceFactor smaller than zero")
                     return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.STOP
                 }
 
@@ -170,7 +170,7 @@ class Hitscan(
                 }
             }
             if(blockHitResult == null){
-                GunEngine.log("- blockHitResult == null, PIERCE")
+//                GunEngine.log("- blockHitResult == null, PIERCE")
                 return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.PIERCE
             }
             val block = blockHitResult.hitBlock!!
@@ -181,7 +181,7 @@ class Hitscan(
             )
             val result = with(weaponType.hit) { hitBlock(rayPosition, block, ray.direction.multiply(-1)) }
             if(result.blockRay) {
-                GunEngine.log("! block hit: ${block}, ray stop")
+//                GunEngine.log("! block hit: ${block}, ray stop")
                 return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.STOP
             }
             if(result.pierceSolid) {
@@ -189,16 +189,17 @@ class Hitscan(
             }
             resistanceFactor -= result.resistance
             if(resistanceFactor <= -1) {
-                GunEngine.log("! block hit: ${block}, ray stop by resistance")
+//                GunEngine.log("! block hit: ${block}, ray stop by resistance")
                 NMSUtil.RayTraceContinuation.STOP
             }else{
-                GunEngine.log("- block hit: ${block}, ray continue")
+//                GunEngine.log("- block hit: ${block}, ray continue")
                 NMSUtil.RayTraceContinuation.PIERCE
             }
         }
 
 
 
+        // 이전 코드
         /*
         rayLoop@while(currentDistance <= maximumRange) {
             rayPosition.add(moveVector)

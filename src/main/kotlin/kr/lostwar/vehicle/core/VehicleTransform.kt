@@ -101,6 +101,14 @@ class VehicleTransform(
 
     }
 
+    fun transform(info: VehicleModelInfo): Vector {
+        val localPosition = info.localPosition -
+                // 히트박스가 없는 경우는 모델 엔티티로 판단함, 아이템 오프셋 적용
+                if(info.hitbox.isEmpty()) info.type.armorStandOffset
+                // 히트박스가 있으면 일반 엔티티로 판단함, localPosition 만 적용
+                else ZERO
+        return localToWorld(localPosition)
+    }
     fun transform(info: VehicleModelInfo, world: World): Location {
         val localPosition = info.localPosition -
                 // 히트박스가 없는 경우는 모델 엔티티로 판단함, 아이템 오프셋 적용

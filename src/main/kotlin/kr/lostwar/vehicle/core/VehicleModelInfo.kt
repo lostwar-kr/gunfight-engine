@@ -22,6 +22,8 @@ class VehicleModelInfo(
     val isSmall: Boolean = false,
 ) {
 
+    val isKinematicEntity = !hitbox.isEmpty() && localPosition.y == 0.0
+
     companion object {
         val defaultModelInfo = VehicleModelInfo("default")
         fun ConfigurationSection.getModelInfo(key: String, default: VehicleModelInfo? = defaultModelInfo): VehicleModelInfo? {

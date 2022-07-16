@@ -38,6 +38,10 @@ abstract class VehicleInfo(
     }!!
 
     val health: Double = getDouble("entity.health", parent?.health)
+    val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage)
+    val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
+    val deathExplosionDamageMultiplyPerDistance: Double = getDouble("entity.death.explosion.damageMultiplyPerDistance", parent?.deathExplosionDamageMultiplyPerDistance)
+    val deathExplosionPassengerDamageMultiply: Double = getDouble("entity.death.explosion.damagePassengerMultiply", parent?.deathExplosionPassengerDamageMultiply)
 
     @Contract("_, _, !null -> !null")
     protected fun <T : Any> get(key: String, parentDef: T?, def: T? = null, getter: ConfigurationSection.(key: String) -> T?): T? {
@@ -79,7 +83,7 @@ abstract class VehicleInfo(
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
 
-    open fun spawn(location: Location, decoration: Boolean = false) = VehicleEntity(this, location, decoration)
+    abstract fun spawn(location: Location, decoration: Boolean = false): VehicleEntity<out VehicleInfo>
 
 
     companion object {
@@ -193,7 +197,7 @@ abstract class VehicleInfo(
             VehicleEntity.byUUID.forEach { id, entity ->
                 val key = entity.base.key
                 val newBase = byKey[key] ?: return@forEach
-                entity.base = newBase
+                entity.setBaseForced(newBase)
             }
         }
 

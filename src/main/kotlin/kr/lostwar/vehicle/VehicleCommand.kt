@@ -13,6 +13,11 @@ import org.bukkit.entity.Player
 
 object VehicleCommand : MultiCommand("andoo", "andoo", aliases = listOf("ad")) {
 
+    private val debugCommand = object : OperatorSubCommand("debug") {
+        override fun SubCommandExecuteData.execute() {
+            VehicleEngine.isDebugging = !VehicleEngine.isDebugging
+        }
+    }
 
     private val reloadCommand = object : OperatorSubCommand("reload") {
         override fun SubCommandExecuteData.execute() {
@@ -61,6 +66,7 @@ object VehicleCommand : MultiCommand("andoo", "andoo", aliases = listOf("ad")) {
     }
 
     override val subCommands: List<SubCommand> = listOf(
+        debugCommand,
         reloadCommand,
         spawnCommand,
         listCommand,

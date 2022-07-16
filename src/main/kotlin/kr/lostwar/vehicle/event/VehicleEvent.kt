@@ -5,7 +5,7 @@ import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
 
 abstract class VehicleEvent(
-    val vehicleEntity: VehicleEntity
+    val vehicleEntity: VehicleEntity<*>
 ) : Event() {
 
     val base = vehicleEntity.base
