@@ -23,18 +23,10 @@ class CarInfo(
     val maxSpeed: Double = getDouble("car.engine.maxSpeed", parent?.maxSpeed, 1.0)
     val maxSpeedBackward: Double = getDouble("car.engine.maxSpeedBackward", parent?.maxSpeedBackward, 0.3)
     val engineSound: SoundClip = getSoundClip("car.engine.sound", parent?.engineSound)
-    val engineSoundPitchRange: ClosedFloatingPointRange<Float> = get("car.engine.soundPitchRange", parent?.engineSoundPitchRange, 0f..2f) { key ->
-        val raw = getString(key) ?: return@get null
-        val split = raw.split("..").map { it.trim() }
-        if(split.size != 2) {
-            return@get VehicleEngine.logErrorNull("cannot parse range: ${raw}")
-        }
-        val min = split[0].toFloatOrNull()
-            ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid minimum value: ${split[0]})")
-        val max = split[1].toFloatOrNull()
-            ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid maximum value: ${split[1]})")
-        Math.min(min, max).coerceAtLeast(0f) .. Math.max(min, max).coerceAtMost(2f)
-    }!!
+    val engineSoundPitchRange: ClosedFloatingPointRange<Float> =
+        getFloatRange("car.engine.soundPitchRange", parent?.engineSoundPitchRange, 0f..2f, 0f..2f)
+    val engineSoundVolumeRange: ClosedFloatingPointRange<Float> =
+        getFloatRange("car.engine.soundVolumeRange", parent?.engineSoundVolumeRange, 1f..2f, 0f..Float.MAX_VALUE)
 
     val steerAccelerationInRadian: Double = getDouble("car.steer.acceleration", parent?.steerAccelerationInRadian?.toDegrees(), 3.0).toRadians()
     val steerRecoverInRadian: Double = getDouble("car.steer.recover", parent?.steerRecoverInRadian?.toDegrees(), 1.0).toRadians()

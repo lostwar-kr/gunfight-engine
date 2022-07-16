@@ -6,6 +6,7 @@ import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
 
 class SeatEntity(
+    val index: Int,
     var info: VehicleModelInfo,
     val entity: ArmorStand,
     val vehicle: VehicleEntity<*>,
@@ -27,13 +28,11 @@ class SeatEntity(
         // 이전에 타고 있던 차량이 있을 때 하차 처리
         val oldRiding = player.vehicle
         oldRiding?.asVehicleEntityOrNull?.let { oldVehicle ->
-            if(oldVehicle == vehicle) {
-                for(entity in vehicle.seatEntities){
-                    if(entity.entityId == oldRiding.entityId) {
-                        vehiclePlayer.isReseating = true
-                        entity.exit(player)
-                        break
-                    }
+            for(entity in oldVehicle.seatEntities){
+                if(entity.entityId == oldRiding.entityId) {
+                    vehiclePlayer.isReseating = true
+                    entity.exit(player)
+                    break
                 }
             }
         }

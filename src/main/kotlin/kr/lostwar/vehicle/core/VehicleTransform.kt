@@ -4,7 +4,7 @@ import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
-import kr.lostwar.util.math.VectorUtil.times
+import org.bukkit.Axis
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.util.EulerAngle
@@ -13,13 +13,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class VehicleTransform(
-    position: Vector,
-    eulerRotation: Vector,
-) {
-    var position: Vector = position
-    var eulerRotation: Vector = eulerRotation
+    var position: Vector,
+    private var rotation: Vector = Vector(),
+) : Cloneable {
+
+    var eulerRotation: Vector
+        get() = rotation
         set(value) {
-            field = value
+            val oldRotation = rotation
+            rotation = value
 
             val yaw = value.y
             val pitch = value.x
@@ -77,6 +79,14 @@ class VehicleTransform(
     // local Y
     var up: Vector = VectorUtil.UP; private set
 
+    fun copyRotation(from: VehicleTransform) {
+        rotation = from.rotation.clone()
+        eulerAngleForPose = from.eulerAngleForPose
+        forward = from.forward.clone()
+        right = from.right.clone()
+        up = from.up.clone()
+    }
+
     fun localToWorld(localPosition: Vector): Vector {
         val tx = localPosition.x
         val ty = localPosition.y
@@ -118,6 +128,15 @@ class VehicleTransform(
         return localToWorld(localPosition)
             .toLocation(world)
             .setDirection(forward)
+    }
+
+    public override fun clone(): VehicleTransform {
+        return VehicleTransform(position.clone(), rotation.clone()).also {
+            it.eulerAngleForPose = eulerAngleForPose // immutable
+            it.forward = forward.clone()
+            it.right = right.clone()
+            it.up = up.clone()
+        }
     }
 
     companion object {

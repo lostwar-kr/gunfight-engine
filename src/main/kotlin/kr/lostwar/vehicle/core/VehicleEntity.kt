@@ -11,8 +11,6 @@ import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.VectorUtil.toYawPitch
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
-import kr.lostwar.util.nms.NMSUtil.setNoPhysics
-import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -36,10 +34,10 @@ import java.util.*
 
 open class VehicleEntity<T : VehicleInfo>(
     base: T,
-    val location: Location,
+    val spawnLocation: Location,
     val decoration: Boolean = false,
 ) {
-    val world = location.world
+    val world = spawnLocation.world
     private var internalUUID: UUID? = null
     val uniqueId: UUID; get() = internalUUID!!
 
@@ -81,10 +79,11 @@ open class VehicleEntity<T : VehicleInfo>(
     }
 
     val transform: VehicleTransform = run {
-        val position = location.toVector()
-        val (yaw, pitch) = location.direction.toYawPitch()
-        VehicleTransform(position, Vector(pitch, yaw, 0f))
+        val position = spawnLocation.toVector()
+        val (yaw, pitch) = spawnLocation.direction.toYawPitch()
+        VehicleTransform(position).apply { eulerRotation = Vector(0f, yaw, 0f) }
     }
+    val location: Location; get() = transform.position.toLocation(world)
 
     var velocity: Vector = Vector()
 
@@ -96,7 +95,7 @@ open class VehicleEntity<T : VehicleInfo>(
         }
     val nonKinematicEntities = modelEntities.filter { !it.key.isKinematicEntity }.toMutableMap()
 
-    val seatEntities = base.seats.map { SeatEntity(it, spawnModel(it), this) }.toMutableList()
+    val seatEntities = base.seats.mapIndexed { index, it -> SeatEntity(index, it, spawnModel(it), this) }.toMutableList()
     val driverSeat = seatEntities[0]
 
     protected fun spawnModel(info: VehicleModelInfo): ArmorStand {
@@ -222,6 +221,22 @@ open class VehicleEntity<T : VehicleInfo>(
     fun ride(player: Player, forced: Boolean = false): Int {
         if(!forced) {
             if(decoration || isDead || player.gameMode == GameMode.SPECTATOR) return -1
+        }
+        val oldRiding = player.vehicle
+        // 같은 차량 내에서, 좌석 변경 시도
+        oldRiding?.asVehicleEntityOrNull?.let { oldVehicle ->
+            if(oldVehicle != this) return@let
+            val seatEntity = seatEntities.find { it.entityId == oldRiding.entityId } ?: return@let
+            val seatCount = seatEntities.size
+            // 같은 차량에서는, 빈 다음 좌석으로 탈 수 있도록 함
+            var nextSeatIndex = (seatEntity.index + 1) % seatCount
+            while(nextSeatIndex != seatEntity.index) {
+                if(seatEntities[nextSeatIndex].ride(player)) {
+                    return nextSeatIndex
+                }
+                nextSeatIndex = (seatEntity.index + 1) % seatCount
+            }
+            return -1
         }
         for((index, seatEntity) in seatEntities.withIndex()) {
             if(seatEntity.ride(player)) {

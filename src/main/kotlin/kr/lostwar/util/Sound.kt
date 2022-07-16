@@ -47,7 +47,12 @@ class SoundInfo private constructor(
         }
     }
 
-    fun playToPlayer(player: Player, location: Location = player.eyeLocation.add(player.eyeLocation.direction.multiply(0.5))) {
+    fun playToPlayer(
+        player: Player,
+        location: Location = player.eyeLocation.add(player.eyeLocation.direction.multiply(0.5)),
+        volume: Float = this.volume,
+        pitch: Float = this.pitch
+    ) {
         if(custom) {
             player.playSound(location, soundString, category, volume, pitch)
         }else {
@@ -141,12 +146,12 @@ class SoundClip(
             }
         }.runTaskTimer(plugin, 0, 1)
     }
-    fun playAt(player: Player, offset: Int = 0)
-            = play(offset) { playAt(player.location) }
-    fun playAt(location: Location, offset: Int = 0)
-            = play(offset) { playAt(location) }
-    fun playToPlayer(player: Player, offset: Int = 0)
-            = play(offset) { playToPlayer(player) }
+    fun playAt(player: Player, offset: Int = 0, volume: Float? = null, pitch: Float? = null)
+            = play(offset) { playAt(player.location, volume ?: this.volume, pitch ?: this.pitch) }
+    fun playAt(location: Location, offset: Int = 0, volume: Float? = null, pitch: Float? = null)
+            = play(offset) { playAt(location, volume ?: this.volume, pitch ?: this.pitch) }
+    fun playToPlayer(player: Player, offset: Int = 0, volume: Float? = null, pitch: Float? = null)
+            = play(offset) { playToPlayer(player, volume = volume ?: this.volume, pitch = pitch ?: this.pitch) }
 
     companion object {
         val emptyClip = SoundClip(emptyList())

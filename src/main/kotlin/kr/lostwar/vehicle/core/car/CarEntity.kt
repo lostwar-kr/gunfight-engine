@@ -4,6 +4,8 @@ import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.clamp
+import kr.lostwar.util.math.lerp
+import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -19,10 +21,26 @@ class CarEntity(
 ) : VehicleEntity<CarInfo>(base, location, decoration) {
 
     override fun onEarlyTick() {
-        super.onEarlyTick()
         input()
         updateRotation()
         move()
+    }
+
+    override fun onTick() {
+    }
+
+    override fun onLateTick() {
+        engineSound()
+    }
+
+    private fun engineSound() {
+        if(abs(forwardSpeed) > 0) {
+            val percentage = (abs(forwardSpeed) / base.maxSpeed).toFloat()
+            base.engineSound.playAt(location,
+                volume = base.engineSoundVolumeRange.lerp(percentage),
+                pitch = base.engineSoundPitchRange.lerp(percentage),
+            )
+        }
     }
 
     private var currentGravity = 0.0
@@ -70,14 +88,18 @@ class CarEntity(
                     (forwardSpeed + base.natureDeceleration).coerceAtMost(0.0)
                 }
             }
-            val steerSign = if(forwardSpeed > 0) 1 else if(forwardSpeed < 0) -1 else 0
-            if(forwardSpeed != 0.0 && driver.isLeft) {
-                steering += base.steerAccelerationInRadian * steerSign
+            val steerPower =
+                if(forwardSpeed > 0)
+                    forwardSpeed / base.maxSpeed
+                else if(forwardSpeed < 0)
+                    forwardSpeed / base.maxSpeedBackward
+                else 0.0
+            if(steerPower != 0.0 && driver.isLeft) {
+                steering += base.steerAccelerationInRadian * steerPower
             }
-            else if(forwardSpeed != 0.0 && driver.isRight) {
-                steering += -base.steerAccelerationInRadian * steerSign
-            }
-            else{
+            else if(steerPower != 0.0 && driver.isRight) {
+                steering += -base.steerAccelerationInRadian * steerPower
+            }else{
                 if(steering > 0) {
                     steering = (steering - base.steerRecoverInRadian).coerceAtLeast(0.0)
                 }else if(steering < 0){
@@ -89,11 +111,41 @@ class CarEntity(
     }
 
     private fun updateRotation() {
-        transform.eulerRotation = Vector(
+        val oldRotation = transform.eulerRotation
+        val newRotation = Vector(
             0.0,
-            transform.eulerRotation.y + steering,
+            oldRotation.y + steering,
             0.0,
         )
+        transform.eulerRotation = newRotation
+        /*
+        if(steering == 0.0) return
+        val oldRotation = transform.eulerRotation
+        val newRotation = Vector(
+            0.0,
+            oldRotation.y + steering,
+            0.0,
+        )
+        val oldTransform = transform.clone()
+        transform.eulerRotation = newRotation
+
+        for((info, entity) in kinematicEntities) {
+            // 이 회전으로 인한 kinematicEntity의 이동
+            val velocity = transform.transform(info).subtract(entity.location.toVector())
+            val newVelocity = entity.tryCollideAndGetModifiedVelocity(velocity)
+            val diff = (newVelocity - velocity)
+            val xCollision = diff.x != 0.0
+            val zCollision = diff.z != 0.0
+            val horizontalCollision = xCollision || zCollision
+            // 회전으로 인해 충돌이 발생할 경우, 회전을 취소함
+            if(horizontalCollision) {
+                steering = 0.0
+                transform.copyRotation(oldTransform)
+                break
+            }
+        }
+
+         */
     }
 
     private fun move() {
@@ -108,6 +160,7 @@ class CarEntity(
 
         var finalStepUp = 0.0
         var finalGravity = currentGravity
+        var collision = false
         for((info, entity) in entities) {
             // NMS 충돌 처리를 통해 바뀐 velocity 가져오기
             val newVelocity = entity.tryCollideAndGetModifiedVelocity(velocity)
@@ -122,6 +175,7 @@ class CarEntity(
                 finalGravity = 0.0
                 currentGravity = 0.0
                 velocity.y = 0.0
+                entities.forEach { it.value.setIsOnGround(true) }
             }
 
             // 경사 올랐으면 모든 엔티티 중 최대 경사 오름으로 설정
@@ -148,12 +202,16 @@ class CarEntity(
 //                forwardSpeed = -forwardSpeed / 2.0
                 forwardSpeed = 0.0
                 steering = 0.0
+                collision = true
             }
         }
         if(finalStepUp > 0) {
             velocity.y = finalStepUp
         }else{
             velocity.y = finalGravity
+            if(finalGravity < 0) {
+                entities.forEach { it.value.setIsOnGround(true) }
+            }
         }
         transform.position.add(velocity)
         for((info, entity) in kinematicEntities) {

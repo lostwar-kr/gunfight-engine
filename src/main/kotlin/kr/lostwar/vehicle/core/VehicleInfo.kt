@@ -82,6 +82,25 @@ abstract class VehicleInfo(
     protected fun getSoundClip(key: String, parentDef: SoundClip?, def: SoundClip = SoundClip.emptyClip): SoundClip {
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
+    protected fun getFloatRange(
+        key: String,
+        parentDef: ClosedFloatingPointRange<Float>?,
+        def: ClosedFloatingPointRange<Float> = 0f..0f,
+        clampRange: ClosedFloatingPointRange<Float>?
+    ): ClosedFloatingPointRange<Float> {
+        return get(key, parentDef, def) {
+            val raw = getString(key) ?: return@get null
+            val split = raw.split("..").map { it.trim() }
+            if(split.size != 2) {
+                return@get VehicleEngine.logErrorNull("cannot parse range: ${raw}")
+            }
+            val min = split[0].toFloatOrNull()
+                ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid minimum value: ${split[0]})")
+            val max = split[1].toFloatOrNull()
+                ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid maximum value: ${split[1]})")
+            Math.min(min, max).coerceAtLeast(clampRange?.start ?: -Float.MAX_VALUE) .. Math.max(min, max).coerceAtMost(clampRange?.endInclusive ?: Float.MAX_VALUE)
+        }!!
+    }
 
     abstract fun spawn(location: Location, decoration: Boolean = false): VehicleEntity<out VehicleInfo>
 
