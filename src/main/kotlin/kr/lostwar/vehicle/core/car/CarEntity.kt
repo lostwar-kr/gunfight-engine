@@ -1,6 +1,7 @@
 package kr.lostwar.vehicle.core.car
 
 import kr.lostwar.util.math.VectorUtil.minus
+import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.setPosition
@@ -96,13 +97,18 @@ class CarEntity(
     }
 
     private fun move() {
+        val entities = kinematicEntities.entries.sortedByDescending { (info, entity) ->
+            if(forwardSpeed >= 0) info.localPosition.z
+            else -info.localPosition.z
+        }
+
         currentGravity -= base.gravityFactor
         velocity = transform.forward.times(forwardSpeed)
         velocity.y = currentGravity
 
         var finalStepUp = 0.0
         var finalGravity = currentGravity
-        for((index, entity) in kinematicEntities.values.withIndex()) {
+        for((info, entity) in entities) {
             // NMS 충돌 처리를 통해 바뀐 velocity 가져오기
             val newVelocity = entity.tryCollideAndGetModifiedVelocity(velocity)
             val diff = (newVelocity - velocity)
@@ -136,6 +142,7 @@ class CarEntity(
                 velocity.x = newVelocity.x
                 velocity.z = newVelocity.z
                 forwardSpeed = 0.0
+                steering = 0.0
             }
         }
         if(finalStepUp > 0) {
