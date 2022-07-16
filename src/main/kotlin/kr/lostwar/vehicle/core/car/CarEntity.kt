@@ -71,10 +71,10 @@ class CarEntity(
                 }
             }
             val steerSign = if(forwardSpeed > 0) 1 else if(forwardSpeed < 0) -1 else 0
-            if(driver.isLeft) {
+            if(forwardSpeed != 0.0 && driver.isLeft) {
                 steering += base.steerAccelerationInRadian * steerSign
             }
-            else if(driver.isRight) {
+            else if(forwardSpeed != 0.0 && driver.isRight) {
                 steering += -base.steerAccelerationInRadian * steerSign
             }
             else{
@@ -139,8 +139,13 @@ class CarEntity(
             // 수평 충돌 시 수평 속도 0으로 설정
             if(horizontalCollision) {
                 // xz 속도 변경, 다른 엔티티에도 적용함
-                velocity.x = newVelocity.x
-                velocity.z = newVelocity.z
+                if(xCollision) {
+                    velocity.x = -velocity.x * 2
+                }
+                if(zCollision) {
+                    velocity.z = -velocity.z * 2
+                }
+//                forwardSpeed = -forwardSpeed / 2.0
                 forwardSpeed = 0.0
                 steering = 0.0
             }
