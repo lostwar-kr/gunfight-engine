@@ -2,12 +2,14 @@ package kr.lostwar.vehicle.core
 
 import kr.lostwar.util.Config
 import kr.lostwar.util.SoundClip
+import kr.lostwar.util.SoundInfo
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfoList
 import org.bukkit.Location
+import org.bukkit.Sound
 import org.bukkit.configuration.ConfigurationSection
 import org.jetbrains.annotations.Contract
 import java.io.File
@@ -38,6 +40,7 @@ abstract class VehicleInfo(
     }!!
 
     val health: Double = getDouble("entity.health", parent?.health, 100.0)
+    val hitSound: SoundClip = getSoundClip("entity.hitSound", parent?.hitSound, SoundClip(listOf(SoundInfo(Sound.ENTITY_ITEM_BREAK))))
     val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage)
     val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
     val deathExplosionDamageMultiplyPerDistance: Double = getDouble("entity.death.explosion.damageMultiplyPerDistance", parent?.deathExplosionDamageMultiplyPerDistance)
@@ -45,7 +48,9 @@ abstract class VehicleInfo(
 
     val upStep: Float = getDouble("general.physics.upStep", parent?.upStep?.toDouble(), 1.0).toFloat()
     val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)
-    val collisionSound: SoundClip = getSoundClip("general.physics.collision.sound", parent?.collisionSound)
+    val collisionSound: SoundClip = getSoundClip("general.physics.collision.sound", parent?.collisionSound, SoundClip(listOf(SoundInfo(Sound.ITEM_SHIELD_BLOCK))))
+
+    open val disableDriverExitVehicleByShiftKey: Boolean = getBoolean("general.extra.disableDriverExitVehicleByShiftKey", parent?.disableDriverExitVehicleByShiftKey, false)
 
     @Contract("_, _, !null -> !null")
     protected fun <T : Any> get(key: String, parentDef: T?, def: T? = null, getter: ConfigurationSection.(key: String) -> T?): T? {

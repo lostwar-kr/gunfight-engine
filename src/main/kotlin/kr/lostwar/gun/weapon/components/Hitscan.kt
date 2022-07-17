@@ -1,6 +1,5 @@
 package kr.lostwar.gun.weapon.components
 
-import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.gun.weapon.WeaponType
@@ -158,7 +157,7 @@ class Hitscan(
                         originalDamage * max(0.0, rangeModifier + resistanceFactor)
                     }
                     if(weaponHitEntityResult != WeaponHitEntityEvent.DamageResult.IGNORE) {
-                        resistanceFactor -= entityResistance
+                        resistanceFactor -= entityPierceResistance
                     }
                 }
 

@@ -9,7 +9,7 @@ import kr.lostwar.vehicle.core.VehicleInfo
 import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
 
-class CarInfo(
+open class CarInfo(
     key: String,
     config: ConfigurationSection,
     configFile: Config,
@@ -18,7 +18,7 @@ class CarInfo(
 
     val acceleration: Double = getDouble("car.engine.acceleration", parent?.acceleration, 0.2)
     val brake: Double = getDouble("car.engine.brake", parent?.brake, 0.2)
-    val natureDeceleration: Double = getDouble("car.engine.natureDeceleration", parent?.natureDeceleration, 0.01)
+    val naturalDeceleration: Double = getDouble("car.engine.naturalDeceleration", parent?.naturalDeceleration, 0.01)
     val accelerationBackward: Double = getDouble("car.engine.accelerationBackward", parent?.accelerationBackward, 0.3)
     val maxSpeed: Double = getDouble("car.engine.maxSpeed", parent?.maxSpeed, 1.0)
     val maxSpeedBackward: Double = getDouble("car.engine.maxSpeedBackward", parent?.maxSpeedBackward, 0.3)

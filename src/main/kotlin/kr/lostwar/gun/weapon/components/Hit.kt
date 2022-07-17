@@ -8,7 +8,9 @@ import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.components.HitBlock.Companion.getResult
 import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
+import kr.lostwar.util.SoundClip
 import kr.lostwar.util.block.BlockUtil
+import kr.lostwar.util.math.VectorUtil
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
@@ -23,14 +25,21 @@ class Hit(
     parent: Hit?,
 ) : WeaponComponent(config, weapon, parent, true) {
 
-    val entityDamage: Double = getDouble("entity.damage", parent?.entityDamage)
-    val entityResistance: Double = getDouble("entity.resistance", parent?.entityResistance, 1.0)
+    val damage: Double = getDouble("entity.damage", parent?.damage)
+    val resetHitCooldown: Boolean = getBoolean("entity.resetHitCooldown", parent?.resetHitCooldown, true)
+    val resetVelocity: Boolean = getBoolean("entity.resetVelocity", parent?.resetVelocity, true)
+    val hitSound: SoundClip = getSoundClip("entity.hitSound", parent?.hitSound)
+
+    val entityPierceResistance: Double = getDouble("entity.pierce.resistance", parent?.entityPierceResistance, 1.0)
+    val pierceSound: SoundClip = getSoundClip("entity.pierce.sound", parent?.pierceSound)
+
     val headShotDamageAdd: Double = getDouble("entity.headShot.damageAdd", parent?.headShotDamageAdd, 0.0)
     val headShotDamageMultiply: Double = getDouble("entity.headShot.damageMultiply", parent?.headShotDamageMultiply, 2.0)
+    val headShotSound: SoundClip = getSoundClip("entity.headShot.sound", parent?.headShotSound)
 
     fun WeaponPlayer.hitEntity(
         victim: LivingEntity,
-        damage: Double = this@Hit.entityDamage,
+        damage: Double = this@Hit.damage,
         damageSource: Entity? = null,
         location: Location? = null,
         isHeadShot: Boolean = false,
@@ -56,6 +65,20 @@ class Hit(
             victim.killer = player
         }
         victim.damage(damage)
+        if(resetHitCooldown){
+            victim.noDamageTicks = 0
+        }
+        if(resetVelocity) {
+            victim.velocity = VectorUtil.ZERO
+        }
+        hitSound.playToPlayer(player)
+        if(isHeadShot) {
+            headShotSound.playToPlayer(player)
+        }
+        if(isPiercing) {
+            pierceSound.playToPlayer(player)
+        }
+
         return event.result
     }
 

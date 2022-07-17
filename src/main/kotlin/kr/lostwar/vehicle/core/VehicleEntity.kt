@@ -10,6 +10,7 @@ import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.VectorUtil.toYawPitch
+import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
 import kr.lostwar.vehicle.VehicleEngine
@@ -115,7 +116,7 @@ open class VehicleEntity<T : VehicleInfo>(
     val seatEntities = base.seats.mapIndexed { index, it -> SeatEntity(index, it, spawnModel(it), this) }.toMutableList()
     val driverSeat = seatEntities[0]
 
-    protected fun spawnModel(info: VehicleModelInfo): ArmorStand {
+    protected open fun spawnModel(info: VehicleModelInfo): ArmorStand {
         val worldPosition = transform.transform(info, world)
         return (world.spawnEntity(worldPosition, EntityType.ARMOR_STAND) as ArmorStand).apply {
             isSmall = info.isSmall
@@ -234,6 +235,11 @@ open class VehicleEntity<T : VehicleInfo>(
             DamageCause.ENTITY_ATTACK, DamageCause.ENTITY_SWEEP_ATTACK, DamageCause.ENTITY_EXPLOSION -> if(damager == null) return
         }
 
+        // 탑승하고 있는 차량에 대한 피해는 지형 충돌로 인한 피해를 제외하고 무시
+        if(cause != Constants.collisionDamageCause && damager?.vehicleEntityIdOrNull == this.uniqueId && amount > 0) {
+            return
+        }
+
         damageList.add(VehicleEntityDamage(this, amount, cause, victim, damager, weapon))
     }
 
@@ -247,7 +253,7 @@ open class VehicleEntity<T : VehicleInfo>(
         for(damage in damages) {
             val event = VehicleEntityDamageEvent(this, damage, primaryEntity.health - damage.amount <= 0)
             if(event.callEvent()){
-                primaryEntity.health -= event.damageInfo.amount
+                primaryEntity.health = (primaryEntity.health - event.damageInfo.amount).clamp(0.0  .. primaryEntity.maxHealth)
                 if(primaryEntity.health <= 0) {
                     death()
                     break
@@ -277,7 +283,7 @@ open class VehicleEntity<T : VehicleInfo>(
         damageList.clear()
     }
 
-    fun ride(player: Player, forced: Boolean = false): Int {
+    open fun ride(player: Player, forced: Boolean = false): Int {
         if(!forced) {
             if(decoration || isDead || player.gameMode == GameMode.SPECTATOR) return -1
         }
@@ -305,7 +311,7 @@ open class VehicleEntity<T : VehicleInfo>(
         return -1
     }
 
-    fun exit(riding: ArmorStand, player: Player, forced: Boolean = false): Boolean {
+    open fun exit(riding: ArmorStand, player: Player, forced: Boolean = false): Boolean {
         val exitEvent = VehiclePreExitEvent(this, player, riding)
         exitEvent.callEvent()
         if(!forced && !isDead && exitEvent.isCancelled) {
@@ -376,6 +382,15 @@ open class VehicleEntity<T : VehicleInfo>(
             val vehiclePlayer = player.vehiclePlayer
             val riding = dismounted as ArmorStand
             val vehicle = riding.asVehicleEntityOrNull ?: return
+            // shift 를 조작키로 사용하는 차량의 경우
+            if(isCancellable 
+                && riding.entityId == vehicle.driverSeat.entityId 
+                && vehicle.base.disableDriverExitVehicleByShiftKey 
+                && (player.isSneaking || vehiclePlayer.isShift)
+            ) {
+                isCancelled = true
+                return    
+            }
             if(vehiclePlayer.isReseating) return
             player.fallDistance = 0f
             if(player.isDead) return

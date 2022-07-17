@@ -22,6 +22,7 @@ class VehicleTransform(
         set(value) {
             val oldRotation = rotation
             rotation = value
+            if(oldRotation == rotation) return
 
             val yaw = value.y
             val pitch = value.x
@@ -120,12 +121,7 @@ class VehicleTransform(
         return localToWorld(localPosition)
     }
     fun transform(info: VehicleModelInfo, world: World): Location {
-        val localPosition = info.localPosition -
-                // 히트박스가 없는 경우는 모델 엔티티로 판단함, 아이템 오프셋 적용
-                if(info.hitbox.isEmpty()) info.type.armorStandOffset
-                // 히트박스가 있으면 일반 엔티티로 판단함, localPosition 만 적용
-                else ZERO
-        return localToWorld(localPosition)
+        return transform(info)
             .toLocation(world)
             .setDirection(forward)
     }
@@ -140,8 +136,8 @@ class VehicleTransform(
     }
 
     companion object {
-        val Vector.eulerYaw; get() = y.toFloat()
-        val Vector.eulerPitch; get() = x.toFloat()
-        val Vector.eulerRoll; get() = z.toFloat()
+        val Vector.eulerYaw     ; get() = y
+        val Vector.eulerPitch   ; get() = x
+        val Vector.eulerRoll    ; get() = z
     }
 }

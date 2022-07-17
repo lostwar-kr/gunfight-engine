@@ -5,6 +5,7 @@ import kr.lostwar.Engine
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.vehicle.core.VehicleEntity
 import kr.lostwar.vehicle.core.VehicleInfo
+import kr.lostwar.vehicle.core.uam.UAMEntity
 import org.bukkit.command.Command
 import org.bukkit.event.Listener
 
@@ -14,6 +15,7 @@ object VehicleEngine : Engine("andoo") {
 
     override val listeners: List<Listener> = listOf(
         VehicleEntity.Companion,
+        UAMEntity.Companion,
     )
     override val commands: List<Command> = listOf(
         VehicleCommand,

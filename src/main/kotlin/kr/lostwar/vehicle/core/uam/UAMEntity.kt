@@ -1,5 +1,6 @@
-package kr.lostwar.vehicle.core.car
+package kr.lostwar.vehicle.core.uam
 
+import kr.lostwar.util.math.VectorUtil.getDisplayString
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.modifiedY
 import kr.lostwar.util.math.VectorUtil.times
@@ -13,18 +14,26 @@ import kr.lostwar.util.nms.BoatNMSUtil.isUnderWater
 import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.Constants
 import kr.lostwar.vehicle.core.VehicleEntity
+import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerPitch
+import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerRoll
 import org.bukkit.Location
+import org.bukkit.entity.ArmorStand
+import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerItemHeldEvent
 import org.bukkit.util.Vector
 import kotlin.math.abs
 
-class CarEntity(
-    base: CarInfo,
+class UAMEntity(
+    base: UAMInfo,
     location: Location,
     decoration: Boolean = false,
-) : VehicleEntity<CarInfo>(base, location, decoration) {
+) : VehicleEntity<UAMInfo>(base, location, decoration) {
 
     override fun onEarlyTick() {
         input()
@@ -51,6 +60,7 @@ class CarEntity(
 
     private var currentGravity = 0.0
     private var forwardSpeed = 0.0
+    private var upSpeed = 0.0
     private var steering = 0.0
 
     private fun input() {
@@ -63,7 +73,39 @@ class CarEntity(
             }else if(steering < 0){
                 (steering + base.steerRecoverInRadian).coerceAtMost(0.0)
             }else 0.0
+            upSpeed = (upSpeed - base.downAcceleration).coerceAtLeast(-base.downMaxSpeedAbandoned)
         }else{
+            // 상승
+            if(driver.isSpace) {
+                // 상승 가속
+                upSpeed = if(upSpeed >= 0) {
+                    (upSpeed + base.upAcceleration).coerceAtMost(base.upMaxSpeed)
+                }
+                // 하강 감속
+                else {
+                    (upSpeed + base.downDeceleration).coerceAtMost(0.0)
+                }
+            }
+            // 하강
+            else if(driver.isShift) {
+                // 하강 가속
+                upSpeed = if(upSpeed <= 0) {
+                    (upSpeed - base.downAcceleration).coerceAtLeast(-base.downMaxSpeed)
+                }
+                // 상승 감속
+                else {
+                    (upSpeed - base.upDeceleration).coerceAtLeast(0.0)
+                }
+            }
+            // 아무것도 안 눌렀으면
+            else {
+                upSpeed = if(upSpeed > 0) {
+                    (upSpeed - base.upNaturalDeceleration).coerceAtLeast(0.0)
+                }else {
+                    (upSpeed + base.downNaturalDeceleration).coerceAtMost(0.0)
+                }
+            }
+
             // 전진 또는 정지중일 때
             if(forwardSpeed >= 0) {
                 // 가속 페달
@@ -118,10 +160,20 @@ class CarEntity(
 
     private fun updateRotation() {
         val oldRotation = transform.eulerRotation
+
+        val targetPitch = (forwardSpeed.coerceAtLeast(0.0) / base.maxSpeed) * base.forwardPitchAngleInRadian
+        val pitch =
+            if(base.forwardPitchLerpSpeed >= 1.0) targetPitch
+            else lerp(oldRotation.eulerPitch, targetPitch, base.forwardPitchLerpSpeed)
+
+        val targetRoll = (steering / base.steerMaxAngleInRadian) * base.steerRollAngleInRadian
+        val roll =
+            if(base.steerRollLerpSpeed >= 1.0) targetRoll
+            else lerp(oldRotation.eulerRoll, targetRoll, base.steerRollLerpSpeed)
         val newRotation = Vector(
-            0.0,
+            pitch,
             oldRotation.y + steering,
-            0.0,
+            roll,
         )
         transform.eulerRotation = newRotation
         /*
@@ -184,7 +236,6 @@ class CarEntity(
 
         val y = entity.location.y
         var invFriction = 0.05
-        var gravity = currentGravity
         var upwardMove = 0.0
         if(oldBoatState == BoatNMSUtil.BoatState.IN_AIR
             && boatState != BoatNMSUtil.BoatState.IN_AIR
@@ -197,39 +248,37 @@ class CarEntity(
             boatState = BoatNMSUtil.BoatState.IN_WATER
         }else when(boatState) {
             BoatNMSUtil.BoatState.IN_WATER -> {
-                gravity = -7.0E-4
                 currentGravity = 0.0
                 upwardMove = (boatWaterLevel - y)
                 invFriction = base.boatWaterFriction
             }
             BoatNMSUtil.BoatState.UNDER_FLOWING_WATER -> {
-                gravity = -7.0E-4
                 currentGravity = 0.0
                 upwardMove = 1.0
                 invFriction = 0.9
             }
             BoatNMSUtil.BoatState.UNDER_WATER -> {
-                gravity = -7.0E-4
                 currentGravity = 0.0
                 upwardMove = 1.0
                 invFriction = 0.45
             }
             BoatNMSUtil.BoatState.IN_AIR -> {
-                invFriction = 0.9
+                invFriction = 1.0
             }
             BoatNMSUtil.BoatState.ON_LAND -> {
                 invFriction = boatLandFriction * base.boatLandFrictionMultiplier
                 currentGravity = 0.0
             }
         }
+        // 물/땅이랑 닿은 경우에는 최소 0.0으로 무조건 제한
+        if(boatState != BoatNMSUtil.BoatState.IN_AIR) {
+            upSpeed = upSpeed.coerceAtLeast(0.0)
+        }
 
         velocity.x *= invFriction
         velocity.z *= invFriction
-        velocity.y = gravity
-        if(upwardMove > 0.0) {
-            velocity.y = velocity.y + upwardMove
-        }
-//        console("boatState: $boatState, gravity: $gravity, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
+        velocity.y = velocity.y + upwardMove
+        console("boatState: $boatState, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
     }
 
     private fun move() {
@@ -239,13 +288,10 @@ class CarEntity(
             else it.asReversed()
         }
 
-        currentGravity -= base.gravityFactor
-        velocity = transform.forward.times(forwardSpeed)
-        velocity.y = currentGravity
+        velocity = transform.forward.modifiedY(0.0).normalize().multiply(forwardSpeed)
+        velocity.y = upSpeed
 
-        if(base.floatOnWater) {
-            floatBoat()
-        }
+        floatBoat()
 
         var finalStepUp = 0.0
         var finalGravity = currentGravity
@@ -264,6 +310,7 @@ class CarEntity(
                 finalGravity = 0.0
                 currentGravity = 0.0
                 velocity.y = 0.0
+                upSpeed = upSpeed.coerceAtLeast(0.0)
                 entities.forEach { it.value.setIsOnGround(true) }
             }
 
@@ -297,7 +344,6 @@ class CarEntity(
         if(finalStepUp > 0) {
             velocity.y = finalStepUp
         }else{
-            velocity.y = finalGravity
             if(finalGravity < 0) {
                 entities.forEach { it.value.setIsOnGround(false) }
             }
@@ -314,4 +360,27 @@ class CarEntity(
         }
     }
 
+    override fun ride(player: Player, forced: Boolean): Int {
+        val index = super.ride(player, forced)
+        // 착석 성공했을 때 ...
+        if(index >= 0) {
+
+        }
+        return index
+    }
+
+    companion object : Listener {
+        @EventHandler
+        fun PlayerItemHeldEvent.onItemHeld() {
+            val riding = player.vehicle ?: return
+            val vehicle = riding.asVehicleEntityOrNull ?: return
+            if(vehicle.base.type.clazz != UAMInfo::class.java) return
+            if(riding.entityId != vehicle.driverSeat.entityId) return
+
+            if(previousSlot != newSlot && newSlot == 8) {
+                isCancelled = true
+                vehicle.exit(riding as ArmorStand, player)
+            }
+        }
+    }
 }
