@@ -1,14 +1,19 @@
 package kr.lostwar.vehicle.core.car
 
 import kr.lostwar.util.math.VectorUtil.minus
-import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.math.lerp
+import kr.lostwar.util.nms.BoatNMSUtil
+import kr.lostwar.util.nms.BoatNMSUtil.getGroundFriction
+import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevel
+import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevelAbove
+import kr.lostwar.util.nms.BoatNMSUtil.isUnderWater
 import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
+import kr.lostwar.vehicle.core.Constants
 import kr.lostwar.vehicle.core.VehicleEntity
 import org.bukkit.Location
 import org.bukkit.util.Vector
@@ -148,15 +153,98 @@ class CarEntity(
          */
     }
 
+    private var oldBoatState: BoatNMSUtil.BoatState? = null
+    private var boatState: BoatNMSUtil.BoatState = getBoatState()
+    private var boatWaterLevel: Double = 0.0
+    private var boatLandFriction: Double = 0.0
+    private var boatLastDeltaY = 0.0
+    private fun getBoatState(): BoatNMSUtil.BoatState {
+        val (info, entity) = kinematicEntities.entries.first()
+        entity.isUnderWater()?.let {
+            boatWaterLevel = entity.boundingBox.maxY + 0.001
+            return it
+        }
+        val (waterLevel, isInWater) = entity.getWaterLevel()
+        boatWaterLevel = waterLevel
+        if(isInWater) {
+            return BoatNMSUtil.BoatState.IN_WATER
+        }
+        val friction = entity.getGroundFriction()
+        if(friction > 0f) {
+            boatLandFriction = friction.toDouble()
+            return BoatNMSUtil.BoatState.ON_LAND
+        }
+        return BoatNMSUtil.BoatState.IN_AIR
+    }
+    private fun floatBoat() {
+        val (info, entity) = kinematicEntities.entries.first()
+        oldBoatState = boatState
+        boatState = getBoatState()
+
+        val y = entity.location.y
+        var invFriction = 0.05
+        var gravity = currentGravity
+        var upwardMove = 0.0
+        if(oldBoatState == BoatNMSUtil.BoatState.IN_AIR
+            && boatState != BoatNMSUtil.BoatState.IN_AIR
+            && boatState != BoatNMSUtil.BoatState.ON_LAND
+        ) {
+            boatWaterLevel = y + info.hitbox.height
+            transform.position.y = (entity.getWaterLevelAbove(boatLastDeltaY) - info.hitbox.height) + 0.101
+            velocity.y = 0.0
+            boatLastDeltaY = 0.0
+            boatState = BoatNMSUtil.BoatState.IN_WATER
+        }else when(boatState) {
+            BoatNMSUtil.BoatState.IN_WATER -> {
+                gravity = -7.0E-4
+                currentGravity = 0.0
+                upwardMove = (boatWaterLevel - y)
+                invFriction = base.boatWaterFriction
+            }
+            BoatNMSUtil.BoatState.UNDER_FLOWING_WATER -> {
+                gravity = -7.0E-4
+                currentGravity = 0.0
+                upwardMove = 1.0
+                invFriction = 0.9
+            }
+            BoatNMSUtil.BoatState.UNDER_WATER -> {
+                gravity = -7.0E-4
+                currentGravity = 0.0
+                upwardMove = 1.0
+                invFriction = 0.45
+            }
+            BoatNMSUtil.BoatState.IN_AIR -> {
+                invFriction = 0.9
+            }
+            BoatNMSUtil.BoatState.ON_LAND -> {
+                invFriction = boatLandFriction * base.boatLandFrictionMultiplier
+                currentGravity = 0.0
+            }
+        }
+
+        velocity.x *= invFriction
+        velocity.z *= invFriction
+        velocity.y = gravity
+        if(upwardMove > 0.0) {
+            velocity.y = velocity.y + upwardMove
+        }
+//        console("boatState: $boatState, gravity: $gravity, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
+    }
+
     private fun move() {
-        val entities = kinematicEntities.entries.sortedByDescending { (info, entity) ->
-            if(forwardSpeed >= 0) info.localPosition.z
-            else -info.localPosition.z
+        val lastForwardSpeed = forwardSpeed
+        val entities = kinematicEntitiesSortedByZ.let {
+            if(forwardSpeed >= 0) it
+            else it.asReversed()
         }
 
         currentGravity -= base.gravityFactor
         velocity = transform.forward.times(forwardSpeed)
         velocity.y = currentGravity
+
+        if(base.floatOnWater) {
+            floatBoat()
+        }
 
         var finalStepUp = 0.0
         var finalGravity = currentGravity
@@ -214,8 +302,14 @@ class CarEntity(
             }
         }
         transform.position.add(velocity)
+        boatLastDeltaY = velocity.y
         for((info, entity) in kinematicEntities) {
             entity.setPosition(transform.transform(info))
+        }
+
+        if(collision && primaryEntity.noDamageTicks <= 0) {
+            damage(base.collisionDamagePerSpeed * abs(lastForwardSpeed), Constants.collisionDamageCause)
+            base.collisionSound.playAt(location)
         }
     }
 

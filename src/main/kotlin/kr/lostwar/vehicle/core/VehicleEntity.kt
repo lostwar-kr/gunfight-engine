@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.server.ServerTickEndEvent
 import com.destroystokyo.paper.event.server.ServerTickStartEvent
 import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
+import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.math.VectorUtil.plus
@@ -14,6 +15,7 @@ import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
+import kr.lostwar.vehicle.event.VehicleEntityDamageEvent
 import kr.lostwar.vehicle.event.VehiclePreExitEvent
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
@@ -22,8 +24,10 @@ import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.metadata.FixedMetadataValue
@@ -38,15 +42,23 @@ open class VehicleEntity<T : VehicleInfo>(
     val decoration: Boolean = false,
 ) {
     val world = spawnLocation.world
-    private var internalUUID: UUID? = null
-    val uniqueId: UUID; get() = internalUUID!!
+    private var internalPrimaryEntity: ArmorStand? = null
+        set(entity) {
+            field = entity
+            if(entity != null) {
+                entity.isInvulnerable = false
+                entity.maxHealth = base.health
+                entity.health = base.health
+            }
+        }
+    val primaryEntity: ArmorStand; get() = internalPrimaryEntity!!
+    val uniqueId: UUID; get() = internalPrimaryEntity!!.uniqueId
 
-    open var base: T = base
+    var base: T = base
         set(newBase) {
             field = newBase
             onReload(newBase)
         }
-
     fun setBaseForced(info: VehicleInfo) {
         base = info as T
     }
@@ -63,7 +75,11 @@ open class VehicleEntity<T : VehicleInfo>(
             }
         }
         kinematicEntities.clear()
-        kinematicEntities.putAll(modelEntities.filter { it.key.isKinematicEntity }.onEach { (info, entity) -> entity.setMaxUpStep(1f) })
+        kinematicEntities.putAll(modelEntities.filter { it.key.isKinematicEntity }.onEach { (info, entity) ->
+            entity.setMaxUpStep(base.upStep)
+        })
+        kinematicEntitiesSortedByZ.clear()
+        kinematicEntitiesSortedByZ.addAll(kinematicEntities.entries.sortedByDescending { it.key.localPosition.z })
         nonKinematicEntities.clear()
         nonKinematicEntities.putAll(modelEntities.filter { !it.key.isKinematicEntity })
         if(seatEntities.size != newBase.seats.size) {
@@ -90,9 +106,10 @@ open class VehicleEntity<T : VehicleInfo>(
     val modelEntities = base.models.mapKeys { it.value }.mapValues { spawnModel(it.value) }.toMutableMap()
     val kinematicEntities = modelEntities.filter { it.key.isKinematicEntity }.toMutableMap()
         .onEach { (info, entity) ->
-            entity.setMaxUpStep(1f)
+            entity.setMaxUpStep(base.upStep)
             entity.setDiscardFriction(true)
         }
+    val kinematicEntitiesSortedByZ = kinematicEntities.entries.sortedByDescending { it.key.localPosition.z }.toMutableList()
     val nonKinematicEntities = modelEntities.filter { !it.key.isKinematicEntity }.toMutableMap()
 
     val seatEntities = base.seats.mapIndexed { index, it -> SeatEntity(index, it, spawnModel(it), this) }.toMutableList()
@@ -117,8 +134,8 @@ open class VehicleEntity<T : VehicleInfo>(
             }
             equipment.setItem(info.type, info.item.toItemStack(), true)
             addEquipmentLock(info.type, ArmorStand.LockType.REMOVING_OR_CHANGING)
-            setMetadata(Constants.vehicleEntityKey, FixedMetadataValue(plugin, internalUUID ?: uniqueId.also {
-                internalUUID = it
+            setMetadata(Constants.vehicleEntityKey, FixedMetadataValue(plugin, internalPrimaryEntity?.uniqueId ?: uniqueId.also {
+                internalPrimaryEntity = this
                 byUUID[it] = this@VehicleEntity
             }))
 
@@ -146,6 +163,7 @@ open class VehicleEntity<T : VehicleInfo>(
         onTick()
         updateChildEntities()
         onLateTick()
+        processDamage()
     }
     protected open fun onTick() {
         if(isDebugging) {
@@ -206,16 +224,57 @@ open class VehicleEntity<T : VehicleInfo>(
         }
     }
 
+    private val damageList = mutableListOf<VehicleEntityDamage>()
+    fun damage(amount: Double, cause: DamageCause, victim: ArmorStand? = null, damager: Entity? = null, weapon: Weapon? = null) {
+        if(decoration) return
+        if(isDead) return
+
+        when(cause) {
+            DamageCause.FALL, DamageCause.SUFFOCATION -> return
+            DamageCause.ENTITY_ATTACK, DamageCause.ENTITY_SWEEP_ATTACK, DamageCause.ENTITY_EXPLOSION -> if(damager == null) return
+        }
+
+        damageList.add(VehicleEntityDamage(this, amount, cause, victim, damager, weapon))
+    }
+
+    private fun processDamage() {
+        if(decoration) return
+        if(isDead) return
+        val damages = damageList
+            .sortedByDescending { it.amount }
+            .distinctBy { it.hashCode() }
+
+        for(damage in damages) {
+            val event = VehicleEntityDamageEvent(this, damage, primaryEntity.health - damage.amount <= 0)
+            if(event.callEvent()){
+                primaryEntity.health -= event.damageInfo.amount
+                if(primaryEntity.health <= 0) {
+                    death()
+                    break
+                }
+            }
+        }
+
+        damageList.clear()
+    }
+
     fun death() {
         if(isDead) return
 
         isDead = true
+
+        for(seat in seatEntities) {
+            val player = seat.passenger
+            if(player != null)
+                seat.exit(player, true)
+        }
 
         modelEntities.values.forEach { it.remove() }
         seatEntities.forEach { it.remove() }
 
         modelEntities.clear()
         seatEntities.clear()
+        damageList.clear()
     }
 
     fun ride(player: Player, forced: Boolean = false): Int {
@@ -277,7 +336,7 @@ open class VehicleEntity<T : VehicleInfo>(
             byUUID.values.forEach { it.earlyTick() }
         }
 
-        @EventHandler
+        @EventHandler(priority = EventPriority.MONITOR)
         fun ServerTickEndEvent.onTick() {
             byUUID.values.forEach { it.tick() }
             byUUID.entries.removeIf { it.value.isDead }

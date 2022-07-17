@@ -34,6 +34,14 @@ class CarInfo(
     val steerMaxAngleRangeInRadian = -steerMaxAngleInRadian .. steerMaxAngleInRadian
 
     val gravityFactor: Double = getDouble("car.physics.gravity", parent?.gravityFactor, 0.08)
+    val floatOnWater: Boolean = getBoolean("car.physics.canFloatOnWater", parent?.floatOnWater, false)
+        .also { floatOnWater ->
+            if(floatOnWater && models.count { it.value.isKinematicEntity } != 1) {
+                VehicleEngine.logWarn("car ${key}가 물에 뜰 수 있으나 kinematicEntity 갯수가 1이 아님")
+            }
+        }
+    val boatWaterFriction: Double = getDouble("car.physics.waterFriction", parent?.boatWaterFriction, 1.0)
+    val boatLandFrictionMultiplier: Double = getDouble("car.physics.landFrictionMultiplier", parent?.boatLandFrictionMultiplier, 1.0)
 
     override fun spawn(location: Location, decoration: Boolean) = CarEntity(this, location, decoration)
 

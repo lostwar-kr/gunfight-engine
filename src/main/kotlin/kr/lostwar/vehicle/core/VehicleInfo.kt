@@ -37,11 +37,15 @@ abstract class VehicleInfo(
         getModelInfoList(parentKey, parent?.seats ?: emptyList())
     }!!
 
-    val health: Double = getDouble("entity.health", parent?.health)
+    val health: Double = getDouble("entity.health", parent?.health, 100.0)
     val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage)
     val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
     val deathExplosionDamageMultiplyPerDistance: Double = getDouble("entity.death.explosion.damageMultiplyPerDistance", parent?.deathExplosionDamageMultiplyPerDistance)
     val deathExplosionPassengerDamageMultiply: Double = getDouble("entity.death.explosion.damagePassengerMultiply", parent?.deathExplosionPassengerDamageMultiply)
+
+    val upStep: Float = getDouble("general.physics.upStep", parent?.upStep?.toDouble(), 1.0).toFloat()
+    val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)
+    val collisionSound: SoundClip = getSoundClip("general.physics.collision.sound", parent?.collisionSound)
 
     @Contract("_, _, !null -> !null")
     protected fun <T : Any> get(key: String, parentDef: T?, def: T? = null, getter: ConfigurationSection.(key: String) -> T?): T? {
