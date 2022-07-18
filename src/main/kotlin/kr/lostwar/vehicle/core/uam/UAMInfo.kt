@@ -54,7 +54,7 @@ class UAMInfo(
 
     val gravityFactor: Double = getDouble("uam.physics.gravity", parent?.gravityFactor, 0.08)
     val boatWaterFriction: Double = getDouble("uam.physics.waterFriction", parent?.boatWaterFriction, 1.0)
-    val boatLandFrictionMultiplier: Double = getDouble("car.physics.landFrictionMultiplier", parent?.boatLandFrictionMultiplier, 0.0)
+    val boatLandFrictionMultiplier: Double = getDouble("uam.physics.landFrictionMultiplier", parent?.boatLandFrictionMultiplier, 0.0)
     
     override fun spawn(location: Location, decoration: Boolean): UAMEntity =
         UAMEntity(this, location, decoration)

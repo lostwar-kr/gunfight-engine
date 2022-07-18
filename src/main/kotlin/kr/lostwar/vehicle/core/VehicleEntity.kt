@@ -13,6 +13,7 @@ import kr.lostwar.util.math.VectorUtil.toYawPitch
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
+import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -152,6 +153,7 @@ open class VehicleEntity<T : VehicleInfo>(
         if(decoration) return
         if(isDead) return
         onEarlyTick()
+        updateChildEntities()
     }
     protected open fun onEarlyTick() {}
     private fun tick() {
@@ -162,7 +164,6 @@ open class VehicleEntity<T : VehicleInfo>(
         }
         if(isDead) return
         onTick()
-        updateChildEntities()
         onLateTick()
         processDamage()
     }
@@ -270,9 +271,7 @@ open class VehicleEntity<T : VehicleInfo>(
         isDead = true
 
         for(seat in seatEntities) {
-            val player = seat.passenger
-            if(player != null)
-                seat.exit(player, true)
+            seat.exit()
         }
 
         modelEntities.values.forEach { it.remove() }
@@ -321,7 +320,7 @@ open class VehicleEntity<T : VehicleInfo>(
             if(entity.entityId != riding.entityId) {
                 continue
             }
-            return entity.exit(player, forced)
+            return entity.exit()
         }
         return true
     }

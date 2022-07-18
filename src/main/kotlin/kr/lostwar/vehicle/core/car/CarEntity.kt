@@ -170,7 +170,7 @@ class CarEntity(
         if(isInWater) {
             return BoatNMSUtil.BoatState.IN_WATER
         }
-        val friction = entity.getGroundFriction()
+        val friction = entity.getGroundFriction(0.01)
         if(friction > 0f) {
             boatLandFriction = friction.toDouble()
             return BoatNMSUtil.BoatState.ON_LAND
@@ -219,6 +219,9 @@ class CarEntity(
             }
             BoatNMSUtil.BoatState.ON_LAND -> {
                 invFriction = boatLandFriction * base.boatLandFrictionMultiplier
+                if(base.boatLandFrictionMultiplier <= 0){
+                    forwardSpeed = 0.0
+                }
                 currentGravity = 0.0
             }
         }

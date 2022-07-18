@@ -48,9 +48,10 @@ class UAMEntity(
         engineSound()
     }
 
+    private fun Double.square() = this * this
     private fun engineSound() {
-        if(abs(forwardSpeed) > 0) {
-            val percentage = (abs(forwardSpeed) / base.maxSpeed).toFloat()
+        if(abs(forwardSpeed) + abs(upSpeed) > 0) {
+        val percentage = ((forwardSpeed.square() + upSpeed.square()) / (base.maxSpeed.square())).toFloat()
             base.engineSound.playAt(location,
                 volume = base.engineSoundVolumeRange.lerp(percentage),
                 pitch = base.engineSoundPitchRange.lerp(percentage),
@@ -222,7 +223,7 @@ class UAMEntity(
         if(isInWater) {
             return BoatNMSUtil.BoatState.IN_WATER
         }
-        val friction = entity.getGroundFriction()
+        val friction = entity.getGroundFriction(0.01)
         if(friction > 0f) {
             boatLandFriction = friction.toDouble()
             return BoatNMSUtil.BoatState.ON_LAND
@@ -278,7 +279,7 @@ class UAMEntity(
         velocity.x *= invFriction
         velocity.z *= invFriction
         velocity.y = velocity.y + upwardMove
-        console("boatState: $boatState, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
+        console("boatState: $boatState, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}, position: ${entity.location.toVector().getDisplayString()}")
     }
 
     private fun move() {
@@ -364,7 +365,7 @@ class UAMEntity(
         val index = super.ride(player, forced)
         // 착석 성공했을 때 ...
         if(index >= 0) {
-
+            player.inventory.heldItemSlot = 0
         }
         return index
     }
@@ -372,6 +373,7 @@ class UAMEntity(
     companion object : Listener {
         @EventHandler
         fun PlayerItemHeldEvent.onItemHeld() {
+            val player = player
             val riding = player.vehicle ?: return
             val vehicle = riding.asVehicleEntityOrNull ?: return
             if(vehicle.base.type.clazz != UAMInfo::class.java) return

@@ -31,7 +31,7 @@ class SeatEntity(
             for(entity in oldVehicle.seatEntities){
                 if(entity.entityId == oldRiding.entityId) {
                     vehiclePlayer.isReseating = true
-                    entity.exit(player)
+                    entity.exit()
                     break
                 }
             }
@@ -42,10 +42,7 @@ class SeatEntity(
         return true
     }
 
-    fun exit(player: Player, forced: Boolean = false): Boolean {
-        if(!forced && (passenger == null)){
-            return false
-        }
+    fun exit(): Boolean {
         passenger = null
         entity.eject()
         return true
