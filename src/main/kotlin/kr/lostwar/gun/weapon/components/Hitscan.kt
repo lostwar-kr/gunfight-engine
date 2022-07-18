@@ -1,5 +1,6 @@
 package kr.lostwar.gun.weapon.components
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.gun.weapon.WeaponType
@@ -98,7 +99,7 @@ class Hitscan(
             // 필터링
             if(target.type == EntityType.PLAYER) {
                 val targetPlayer = target as Player
-                if(targetPlayer.gameMode in ignorePlayerGameMode) return@mapNotNull null
+                if(targetPlayer.entityId == player.entityId || targetPlayer.gameMode in ignorePlayerGameMode) return@mapNotNull null
             }
             if(!event.filter(target, player)) {
                return@mapNotNull null
@@ -174,10 +175,10 @@ class Hitscan(
             }
             val block = blockHitResult.hitBlock!!
             // DEBUG
-            DrawUtil.drawFor(60, 10,
-                block.boundingBox.getOutline(2),
-                Particle.DustOptions(Color.BLUE, 1f),
-            )
+//            DrawUtil.drawFor(60, 10,
+//                block.boundingBox.getOutline(2),
+//                Particle.DustOptions(Color.BLUE, 1f),
+//            )
             val result = with(weaponType.hit) { hitBlock(rayPosition, block, ray.direction.multiply(-1)) }
             if(result.blockRay) {
 //                GunEngine.log("! block hit: ${block}, ray stop")

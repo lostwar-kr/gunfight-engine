@@ -1,6 +1,7 @@
 package kr.lostwar.vehicle.core
 
 import kr.lostwar.gun.weapon.Weapon
+import kr.lostwar.util.ExtraUtil.joinToString
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Entity
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
@@ -18,5 +19,17 @@ data class VehicleEntityDamage(
 //        hash = hash * 31 + (victim?.hashCode() ?: 0)
         hash = hash * 31 + (damager?.hashCode() ?: 0)
         return hash
+    }
+
+    override fun toString(): String {
+        return mutableListOf(
+            vehicle.toString(),
+            cause.toString(),
+            amount.toString(),
+        ).apply {
+            if(victim != null) add("victim=${victim}")
+            if(damager != null) add("damager=${damager}")
+            if(weapon != null) add("weapon=${weapon}")
+        }.joinToString(", ", "VehicleEntityDamage[", "]") { it }
     }
 }

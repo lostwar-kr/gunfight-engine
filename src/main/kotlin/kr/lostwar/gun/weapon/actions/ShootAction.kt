@@ -168,7 +168,7 @@ class ShootAction(
     override fun onEnd() {
         weapon.state = Weapon.WeaponState.NOTHING
         clicking = false
-        if(state == State.FULL_AUTO_PER_SHOT) {
+        if(player.player.isOnline && !player.player.isDead && state == State.FULL_AUTO_PER_SHOT) {
             WeaponAnimationDetermineEvent.Type.FULL_AUTO_SHOOT_STOP
                 .create(player, fullAuto!!.shootAnimationLoopStop)
                 .callEventAndGetClip()

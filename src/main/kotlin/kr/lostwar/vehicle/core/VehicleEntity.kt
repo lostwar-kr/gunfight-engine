@@ -6,6 +6,7 @@ import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
+import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
@@ -13,11 +14,12 @@ import kr.lostwar.util.math.VectorUtil.toYawPitch
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
-import kr.lostwar.util.nms.NMSUtil.setPosition
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.event.VehicleEntityDamageEvent
+import kr.lostwar.vehicle.event.VehicleExplodeDamageEvent
 import kr.lostwar.vehicle.event.VehiclePreExitEvent
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
@@ -29,6 +31,8 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
+import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -123,10 +127,13 @@ open class VehicleEntity<T : VehicleInfo>(
             isSmall = info.isSmall
 
             isInvisible = true
-            isInvulnerable = true
             setGravity(false)
             if(!info.isKinematicEntity) {
                 isMarker = true
+                isInvulnerable = true
+            }else{
+                maxHealth = base.health
+                health = base.health
             }
             info.hitbox.apply(this)
             if(info.type == EquipmentSlot.HAND || info.type == EquipmentSlot.OFF_HAND) {
@@ -241,7 +248,9 @@ open class VehicleEntity<T : VehicleInfo>(
             return
         }
 
-        damageList.add(VehicleEntityDamage(this, amount, cause, victim, damager, weapon))
+        val damage = VehicleEntityDamage(this, amount, cause, victim, damager, weapon)
+        VehicleEngine.log("damage registered: $damage")
+        damageList.add(damage)
     }
 
     private fun processDamage() {
@@ -251,27 +260,79 @@ open class VehicleEntity<T : VehicleInfo>(
             .sortedByDescending { it.amount }
             .distinctBy { it.hashCode() }
 
+        if(damages.isNotEmpty()) {
+            base.hitSound.playAt(location)
+            VehicleEngine.log("damage process:")
+        }
         for(damage in damages) {
+            VehicleEngine.log("- $damage : ${primaryEntity.health - damage.amount}/${primaryEntity.maxHealth}")
             val event = VehicleEntityDamageEvent(this, damage, primaryEntity.health - damage.amount <= 0)
             if(event.callEvent()){
-                primaryEntity.health = (primaryEntity.health - event.damageInfo.amount).clamp(0.0  .. primaryEntity.maxHealth)
-                if(primaryEntity.health <= 0) {
-                    death()
+                val newHealth = primaryEntity.health - event.damageInfo.amount
+                if(newHealth <= 0) {
+                    VehicleEngine.log("! death")
+                    death(event)
                     break
                 }
+                primaryEntity.health = newHealth.clamp(0.0  .. primaryEntity.maxHealth)
             }
         }
+
 
         damageList.clear()
     }
 
-    fun death() {
+    fun death(damageEvent: VehicleEntityDamageEvent? = null) {
         if(isDead) return
-
         isDead = true
 
+        val lastPassengers = seatEntities.mapNotNull { it.passenger }
+        // 탑승자 전부 내보내기
         for(seat in seatEntities) {
             seat.exit()
+        }
+
+        val location = location
+        if(base.deathExplosionEnable && damageEvent?.damageInfo?.damager?.uniqueId != uniqueId) {
+//            console("explosion:")
+            for(entity in location.getNearbyLivingEntities(base.deathExplosionRadius)) {
+                if(entity.type == EntityType.ARMOR_STAND && entity.vehicleEntityIdOrNull == uniqueId) {
+//                    console("- ${entity} is self car, ignored")
+                    continue
+                }
+                val damage: Double
+                val wasPassenger = lastPassengers.contains(entity)
+                // 탑승자가 아닌 경우
+                if(!wasPassenger) {
+                    // 몸통 중앙
+                    val entityLocation = entity.location.add(0.0, entity.height / 2.0, 0.0)
+                    val distance = location.distance(entityLocation)
+                    // ray 쐈는데 블록에 가로막힌 경우 폭발 영향 X
+                    val hitBlock = world.rayTraceBlocks(
+                        location,
+                        entityLocation.subtract(location).toVector().normalize(),
+                        distance,
+                        FluidCollisionMode.NEVER,
+                        true
+                    )?.takeIf { it.hitBlock != null }
+                    if(hitBlock != null){
+//                        console("- ${entity} was not passenger, but block hit(${hitBlock}), cancelled")
+                        continue
+                    }
+                    damage = base.deathExplosionDamage + (distance * -base.deathExplosionDamageDecreasePerDistance)
+//                    console("- ${entity} was not passenger, damage: ${damage}")
+                }
+                // 탑승자의 경우
+                else{
+                    damage = base.deathExplosionDamage * base.deathExplosionPassengerDamageMultiply
+//                    console("- ${entity} was passenger, damage: ${damage}")
+                }
+                val event = VehicleExplodeDamageEvent(this, entity, damage, wasPassenger, damageEvent)
+                if(event.callEvent()) {
+//                    console("  * event not cancelled, applied damage ${event.damage}")
+                    entity.damage(event.damage)
+                }
+            }
         }
 
         modelEntities.values.forEach { it.remove() }
@@ -397,6 +458,32 @@ open class VehicleEntity<T : VehicleInfo>(
                 isCancelled = true
             }
         }
+
+        @EventHandler
+        fun EntityDamageEvent.onEntityDamage() {
+            if(entityType != EntityType.ARMOR_STAND) return
+            val entity = entity as ArmorStand
+            val vehicle = entity.asVehicleEntityOrNull ?: return
+            isCancelled = true
+            vehicle.damage(damage, cause, entity)
+        }
+        @EventHandler
+        fun EntityDamageByEntityEvent.onEntityDamageByEntity() {
+            if(entityType != EntityType.ARMOR_STAND) return
+            val entity = entity as ArmorStand
+            val vehicle = entity.asVehicleEntityOrNull ?: return
+            isCancelled = true
+            vehicle.damage(damage, cause, entity, damager)
+        }
+        @EventHandler
+        fun WeaponHitEntityEvent.onEntityDamageByWeapon() {
+            if(victim.type != EntityType.ARMOR_STAND) return
+            val entity = victim as ArmorStand
+            val vehicle = entity.asVehicleEntityOrNull ?: return
+            result = WeaponHitEntityEvent.DamageResult.IGNORE
+            vehicle.damage(damage, DamageCause.CUSTOM, entity, player.player, weapon)
+        }
+
     }
 
     override fun hashCode(): Int {
@@ -408,6 +495,10 @@ open class VehicleEntity<T : VehicleInfo>(
             return other.uniqueId == uniqueId
         }
         return super.equals(other)
+    }
+
+    override fun toString(): String {
+        return "${base.key}:${uniqueId}"
     }
 
 }

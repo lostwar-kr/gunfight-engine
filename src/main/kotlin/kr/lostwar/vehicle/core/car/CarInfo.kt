@@ -32,6 +32,9 @@ open class CarInfo(
     val steerRecoverInRadian: Double = getDouble("car.steer.recover", parent?.steerRecoverInRadian?.toDegrees(), 1.0).toRadians()
     val steerMaxAngleInRadian: Double = getDouble("car.steer.maxAngle", parent?.steerMaxAngleInRadian?.toDegrees(), 30.0).toRadians()
     val steerMaxAngleRangeInRadian = -steerMaxAngleInRadian .. steerMaxAngleInRadian
+    // roll이 반대로 적용되어 , , 부호를 음수로 적용함
+    val steerRollAngleInRadian: Double = -getDouble("car.steer.roll.angle", parent?.steerRollAngleInRadian?.toDegrees(), 5.0).toRadians()
+    val steerRollLerpSpeed: Double = getDouble("car.steer.roll.lerpSpeed", parent?.steerRollLerpSpeed, 1.0)
 
     val gravityFactor: Double = getDouble("car.physics.gravity", parent?.gravityFactor, 0.08)
     val floatOnWater: Boolean = getBoolean("car.physics.canFloatOnWater", parent?.floatOnWater, false)

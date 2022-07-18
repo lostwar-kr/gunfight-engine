@@ -279,7 +279,7 @@ class UAMEntity(
         velocity.x *= invFriction
         velocity.z *= invFriction
         velocity.y = velocity.y + upwardMove
-        console("boatState: $boatState, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}, position: ${entity.location.toVector().getDisplayString()}")
+//        console("boatState: $boatState, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}, position: ${entity.location.toVector().getDisplayString()}")
     }
 
     private fun move() {

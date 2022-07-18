@@ -12,7 +12,7 @@ class WeaponActionStartEvent(
 ) : WeaponPlayerEvent(player) {
     override val weapon: Weapon = newAction.weapon
     init {
-        GunEngine.log("init WeaponActionStart(old=${oldAction}, new=${newAction})")
+//        GunEngine.log("init WeaponActionStart(old=${oldAction}, new=${newAction})")
     }
 }
 class WeaponActionEndEvent(
@@ -28,6 +28,6 @@ class WeaponActionEndEvent(
     override val weapon: Weapon = oldAction.weapon
     val isWeaponChanged = weapon != player.weapon
     init {
-        GunEngine.log("init WeaponActionEndEvent(old=${oldAction}, new=${newAction})")
+//        GunEngine.log("init WeaponActionEndEvent(old=${oldAction}, new=${newAction})")
     }
 }

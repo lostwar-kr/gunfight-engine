@@ -41,10 +41,11 @@ abstract class VehicleInfo(
 
     val health: Double = getDouble("entity.health", parent?.health, 100.0)
     val hitSound: SoundClip = getSoundClip("entity.hitSound", parent?.hitSound, SoundClip(listOf(SoundInfo(Sound.ENTITY_ITEM_BREAK))))
-    val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage)
+    val deathExplosionEnable: Boolean = getBoolean("entity.death.explosion.enable", parent?.deathExplosionEnable, true)
+    val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage, 20.0)
     val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
-    val deathExplosionDamageMultiplyPerDistance: Double = getDouble("entity.death.explosion.damageMultiplyPerDistance", parent?.deathExplosionDamageMultiplyPerDistance)
-    val deathExplosionPassengerDamageMultiply: Double = getDouble("entity.death.explosion.damagePassengerMultiply", parent?.deathExplosionPassengerDamageMultiply)
+    val deathExplosionDamageDecreasePerDistance: Double = getDouble("entity.death.explosion.damageDecreasePerDistance", parent?.deathExplosionDamageDecreasePerDistance, 2.0)
+    val deathExplosionPassengerDamageMultiply: Double = getDouble("entity.death.explosion.damagePassengerMultiply", parent?.deathExplosionPassengerDamageMultiply, 1000.0)
 
     val upStep: Float = getDouble("general.physics.upStep", parent?.upStep?.toDouble(), 1.0).toFloat()
     val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)

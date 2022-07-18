@@ -16,6 +16,7 @@ import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.Constants
 import kr.lostwar.vehicle.core.VehicleEntity
+import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerRoll
 import org.bukkit.Location
 import org.bukkit.util.Vector
 import kotlin.math.abs
@@ -118,10 +119,16 @@ class CarEntity(
 
     private fun updateRotation() {
         val oldRotation = transform.eulerRotation
+
+        val targetRoll = (steering / base.steerMaxAngleInRadian) * base.steerRollAngleInRadian
+        val roll =
+            if(base.steerRollLerpSpeed >= 1.0) targetRoll
+            else lerp(oldRotation.eulerRoll, targetRoll, base.steerRollLerpSpeed)
+
         val newRotation = Vector(
             0.0,
             oldRotation.y + steering,
-            0.0,
+            roll,
         )
         transform.eulerRotation = newRotation
         /*
