@@ -3,6 +3,7 @@ package kr.lostwar.gun.weapon
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.components.*
 import kr.lostwar.util.AnimationClip
+import kr.lostwar.util.AnimationClip.Companion.getAnimationClipOrNull
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
@@ -120,7 +121,7 @@ abstract class WeaponComponent(
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
     protected fun getAnimationClip(key: String, parentDef: AnimationClip?, def: AnimationClip = AnimationClip.emptyClip): AnimationClip {
-        return get(key, parentDef, def) { k -> if(isList(k)) AnimationClip.parse(getStringList(k)) else null }!!
+        return get(key, parentDef, def) { k -> getAnimationClipOrNull(this, k) }!!
     }
 
     fun lateInit() {

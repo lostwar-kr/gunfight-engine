@@ -1,6 +1,7 @@
 package kr.lostwar.gun.weapon
 
 import com.destroystokyo.paper.event.server.ServerTickEndEvent
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.ui.ComponentUtil.darkGray
@@ -30,7 +31,15 @@ class WeaponPlayer(
 
     private val playingAnimations = ArrayList<BukkitTask>()
     private val playingSounds = ArrayList<BukkitTask>()
+    private val cooldownMaterial = HashSet<Material>()
 
+    fun registerCooldownMaterial(material: Material) {
+        cooldownMaterial.add(material)
+    }
+    fun resetCooldownMaterial() {
+        cooldownMaterial.forEach { player.setCooldown(it, 0) }
+        cooldownMaterial.clear()
+    }
     fun playAnimation(animationTask: BukkitTask?) = animationTask?.let { playingAnimations.add(it) }
     fun playSound(soundTask: BukkitTask?) = soundTask?.let { playingSounds.add(it) }
 
@@ -40,6 +49,7 @@ class WeaponPlayer(
             if(!task.isCancelled) task.cancel()
         }
         playingAnimations.clear()
+        resetCooldownMaterial()
     }
     fun stopSound() {
         for(task in playingSounds) {
@@ -61,6 +71,11 @@ class WeaponPlayer(
         @EventHandler
         fun ServerTickEndEvent.onTickEnd() {
             byUUID.forEach { (_, player) -> player.tick() }
+        }
+
+        @EventHandler(priority = EventPriority.MONITOR)
+        fun ServerTickEndEvent.onTickEndMonitor() {
+            byUUID.forEach { (_, player) -> player.lateTick() }
         }
 
         @EventHandler
@@ -105,6 +120,10 @@ class WeaponPlayer(
         player.sendActionBar(Component.text("weapon: ").append(weapon?.toDisplayComponent() ?: Component.text("not holding").darkGray()))
     }
 
+    private fun lateTick() {
+        weapon?.lateTick()
+    }
+
     fun updateCurrentWeapon(newItem: ItemStack = player.inventory.itemInMainHand) {
         val oldWeapon = weapon
         val newWeapon = Weapon.takeOut(newItem)
@@ -123,6 +142,7 @@ class WeaponPlayer(
         // 기존에 들고 있던 무기가 존재할 경우
         val oldItem = weaponItem
         if(old != null) {
+            GunEngine.log("WeaponEndHoldingEvent(old=${old}, oldItem=${oldItem}, new=${new}, newItem=${newItem})")
             old.type.callEvent(this, WeaponEndHoldingEvent(this, old, oldItem, new, newItem))
             stopAnimation()
             stopSound()

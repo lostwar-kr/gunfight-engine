@@ -1,6 +1,7 @@
 package kr.lostwar
 
 import kr.lostwar.gun.GunEngine
+import kr.lostwar.util.command.CommandUtil.register
 import kr.lostwar.util.ui.text.StringUtil.colored
 import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
@@ -35,6 +36,7 @@ class GunfightEngine : JavaPlugin() {
                 engine.lateInit()
             }
         })
+        TestCommand.register(TestCommand.fallback)
     }
 
     override fun onDisable() {

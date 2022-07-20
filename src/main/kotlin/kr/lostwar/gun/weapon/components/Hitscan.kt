@@ -78,12 +78,12 @@ class Hitscan(
         ).multiply(spread * 0.1)
         val rayDirection = ray.direction.clone().add(spreadVector).normalize()
         hitscanShootEvent.onShoot.forEach { it.invoke(this, rayPosition, rayDirection) }
-        val moveLength = min(farThickness, nearThickness)
+        val minimumThickness = min(farThickness, nearThickness)
 
         // 거리에 따른 범위 구하기
         fun getRadius(distance: Double): Double {
             return if(distance >= nearThicknessRange) farThickness
-            else ((farThickness - nearThickness)/nearThicknessRange) * distance + moveLength
+            else ((farThickness - nearThickness)/nearThicknessRange) * distance + minimumThickness
         }
 
 //        GunEngine.log("entity pre-raycast:")
@@ -110,8 +110,12 @@ class Hitscan(
             val hitbox = boundingBox.expand(getRadius(dot))
             val hitResult = hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null
             // DEBUG
-//            DrawUtil.drawFor(200, 10,
-//                aabb.getOutline(2),
+//            DrawUtil.drawFor(40, 10,
+//                boundingBox.getOutline(2),
+//                Particle.DustOptions(Color.ORANGE, 1f),
+//            )
+//            DrawUtil.drawFor(40, 10,
+//                hitbox.getOutline(2),
 //                Particle.DustOptions(Color.RED, 1f),
 //            )
 //            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")

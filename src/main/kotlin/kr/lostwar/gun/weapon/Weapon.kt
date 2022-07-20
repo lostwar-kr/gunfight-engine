@@ -73,6 +73,17 @@ class Weapon(
         }
         backgroundActions.removeAll { !it.isRunning }
     }
+    private var saveOnThisTick = false
+    fun lateTick() {
+//        if(true) return
+        if(saveOnThisTick) {
+            saveOnThisTick = false
+            val player = player ?: return
+            val item = player.player.inventory.itemInMainHand
+            player.weaponItem = item
+            storeTo(item, false)
+        }
+    }
 
     private val propertyMap = HashMap<WeaponPropertyType<*, *>, WeaponProperty<*, *>>()
     fun <T : Any, Z : Any> registerNotNull(
@@ -101,7 +112,15 @@ class Weapon(
         return getProperty(type)?.value
     }
     operator fun <T : Any, Z : Any> set(type: WeaponPropertyType<T, Z>, value: Z?) {
-        getProperty(type)?.value = value
+        getProperty(type)?.let { property ->
+            if(property.value != value) {
+                property.value = value
+                if(type.saveOnSet) {
+                    modifiedProperties.add(property)
+                    saveOnThisTick = true
+                }
+            }
+        }
     }
 
     var id: UUID by registerNotNull(WeaponPropertyType.ID, UUID.randomUUID()); private set
@@ -124,19 +143,26 @@ class Weapon(
         }
     }
 
-    fun storeTo(item: ItemStack) {
+    private val modifiedProperties = hashSetOf<WeaponProperty<*, *>>()
+    fun storeTo(item: ItemStack, dirty: Boolean = true) {
+//        GunEngine.log("&eweapon data saving (dirty:${dirty})")
+//        GunEngine.log("&eweapon data saving to &f${item}&e ... (dirty:${dirty})")
+        if(!dirty && modifiedProperties.isEmpty()) return
         item.editMeta { meta ->
             val itemContainer = meta.persistentDataContainer
-            // 컨테이너가 있으면 가져오고, 없으면 만들고 넣음
+            // 컨테이너가 있으면 가져오고, 없으면 만듦
             val weaponContainer = itemContainer.get(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER)
                 ?: itemContainer.adapterContext.newPersistentDataContainer()
-                    .also { itemContainer.set(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER, it) }
             weaponContainer[WeaponPropertyType.KEY] = type.key
-            for(container in propertyMap.values) {
+            for(container in if(dirty) propertyMap.values else modifiedProperties) {
+//                console("- save &a${container.type.key}: &e${container.value}")
                 container.storeTo(weaponContainer)
             }
+            // 저장
             itemContainer.set(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER, weaponContainer)
         }
+        modifiedProperties.clear()
+//        GunEngine.log("&aweapon data successfully saved to &f${item}")
     }
 
     companion object {

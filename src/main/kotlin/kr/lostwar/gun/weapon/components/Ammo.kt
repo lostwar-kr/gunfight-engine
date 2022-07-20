@@ -222,7 +222,7 @@ class Ammo(
 
         var Weapon.ammo: Int
             get() = get(AMMO) ?: 0
-            set(value) { set(AMMO, value)  }
+            set(value) { set(AMMO, value) }
         var Weapon.currentLoadMotion: LoadMotionType?
             get() = get(LOAD_MOTION)
             set(value) { set(LOAD_MOTION, value) }

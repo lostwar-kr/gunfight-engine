@@ -9,6 +9,7 @@ import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent.Type
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ExtraUtil.joinToString
 import kr.lostwar.util.SoundClip
+import kr.lostwar.util.ui.text.console
 
 class LoadAction(
     weapon: Weapon,
@@ -88,6 +89,7 @@ class LoadAction(
     override fun onEnd() {
         weapon.state = Weapon.WeaponState.NOTHING
         if(completed) {
+            console("loadAction complete, ammo set to ${ammo.amount}, reset data")
             if(isReload) {
                 weapon.ammo = ammo.amount
             }

@@ -14,6 +14,7 @@ class WeaponPropertyType<T : Any, Z : Any> (
     val key: String,
     val type: PersistentDataType<T, Z>,
     val identifier: Boolean = false,
+    val saveOnSet: Boolean = true,
 ) {
     val namespacedKey = NamespacedKey("p", key)
     operator fun get(container: PersistentDataContainer) = container[namespacedKey, type]

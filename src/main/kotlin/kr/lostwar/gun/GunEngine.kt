@@ -1,9 +1,15 @@
 package kr.lostwar.gun
 
+import com.comphenix.protocol.PacketType
+import com.comphenix.protocol.ProtocolLibrary
+import com.comphenix.protocol.events.PacketAdapter
+import com.comphenix.protocol.events.PacketEvent
 import kr.lostwar.Engine
+import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponListener
 import kr.lostwar.gun.weapon.WeaponPlayer
+import kr.lostwar.util.ui.text.console
 import org.bukkit.command.Command
 import org.bukkit.event.Listener
 
@@ -16,6 +22,30 @@ object GunEngine : Engine("full-metal-jacket") {
         WeaponCommand,
     )
     override fun onLoad(reload: Boolean) {
+        /*
+        if(!reload) {
+            ProtocolLibrary.getProtocolManager().addPacketListener(object : PacketAdapter(plugin, PacketType.Play.Server.SET_SLOT) {
+                override fun onPacketSending(event: PacketEvent) {
+                    if(event.isPlayerTemporary) return
+                    console("sending ${event.packetType} [")
+                    val packet = event.packet
+                    val windowId = packet.integers.read(0)
+                    console("  windowId: $windowId")
+                    val stateId = packet.integers.read(1)
+                    console("  stateId: $stateId")
+                    val slot = packet.integers.read(2)
+                    console("  slot: $slot")
+                    val item = packet.itemModifier.read(0)
+                    console("  item: $item")
+                    console("]")
+                }
+            })
+        }
+
+         */
+
+
+
         if(reload) {
             log("무기 불러오기 ...")
             loadWeapons()
