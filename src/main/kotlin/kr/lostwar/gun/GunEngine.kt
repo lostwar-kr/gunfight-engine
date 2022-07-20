@@ -24,25 +24,20 @@ object GunEngine : Engine("full-metal-jacket") {
     override fun onLoad(reload: Boolean) {
         /*
         if(!reload) {
-            ProtocolLibrary.getProtocolManager().addPacketListener(object : PacketAdapter(plugin, PacketType.Play.Server.SET_SLOT) {
+            ProtocolLibrary.getProtocolManager().addPacketListener(object : PacketAdapter(plugin, PacketType.Play.Server.SET_COOLDOWN) {
                 override fun onPacketSending(event: PacketEvent) {
                     if(event.isPlayerTemporary) return
                     console("sending ${event.packetType} [")
                     val packet = event.packet
-                    val windowId = packet.integers.read(0)
-                    console("  windowId: $windowId")
-                    val stateId = packet.integers.read(1)
-                    console("  stateId: $stateId")
-                    val slot = packet.integers.read(2)
-                    console("  slot: $slot")
-                    val item = packet.itemModifier.read(0)
-                    console("  item: $item")
+                    val duration = packet.integers.read(0)
+                    console("  duration: $duration")
                     console("]")
                 }
             })
         }
 
          */
+
 
 
 

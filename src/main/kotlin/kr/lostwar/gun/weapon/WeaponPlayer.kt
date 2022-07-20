@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.server.ServerTickEndEvent
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
+import kr.lostwar.util.nms.PacketUtil.resetCooldown
 import kr.lostwar.util.ui.ComponentUtil.darkGray
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
@@ -37,19 +38,20 @@ class WeaponPlayer(
         cooldownMaterial.add(material)
     }
     fun resetCooldownMaterial() {
-        cooldownMaterial.forEach { player.setCooldown(it, 0) }
+        cooldownMaterial.forEach { player.resetCooldown(it) }
         cooldownMaterial.clear()
     }
     fun playAnimation(animationTask: BukkitTask?) = animationTask?.let { playingAnimations.add(it) }
     fun playSound(soundTask: BukkitTask?) = soundTask?.let { playingSounds.add(it) }
 
 
-    fun stopAnimation() {
+    fun stopAnimation(resetCooldown: Boolean = true) {
         for(task in playingAnimations) {
             if(!task.isCancelled) task.cancel()
         }
         playingAnimations.clear()
-        resetCooldownMaterial()
+        if(resetCooldown)
+            resetCooldownMaterial()
     }
     fun stopSound() {
         for(task in playingSounds) {
@@ -142,7 +144,7 @@ class WeaponPlayer(
         // 기존에 들고 있던 무기가 존재할 경우
         val oldItem = weaponItem
         if(old != null) {
-            GunEngine.log("WeaponEndHoldingEvent(old=${old}, oldItem=${oldItem}, new=${new}, newItem=${newItem})")
+//            GunEngine.log("WeaponEndHoldingEvent(old=${old}, oldItem=${oldItem}, new=${new}, newItem=${newItem})")
             old.type.callEvent(this, WeaponEndHoldingEvent(this, old, oldItem, new, newItem))
             stopAnimation()
             stopSound()

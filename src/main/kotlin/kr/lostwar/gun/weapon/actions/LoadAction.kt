@@ -89,7 +89,7 @@ class LoadAction(
     override fun onEnd() {
         weapon.state = Weapon.WeaponState.NOTHING
         if(completed) {
-            console("loadAction complete, ammo set to ${ammo.amount}, reset data")
+//            console("loadAction complete, ammo set to ${ammo.amount}, reset data")
             if(isReload) {
                 weapon.ammo = ammo.amount
             }

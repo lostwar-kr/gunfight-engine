@@ -53,10 +53,10 @@ data class AnimationFrame(
     fun play(player: Player, weaponType: WeaponType): Material? {
         if(item == null) return null
 //        console("play animation ${this}")
-        player.sendEquipmentSelf(weaponType.item.itemStack.materialAndData(item), slot)
         if(cooldown != null) {
             player.setCooldown(item.material, cooldown)
         }
+        player.sendEquipmentSelf(weaponType.item.itemStack.materialAndData(item), slot)
         return item.material
     }
 
@@ -74,6 +74,7 @@ class AnimationClip(
 ) : List<AnimationFrame> by frames {
 
     val mostDelayed = frames.maxOfOrNull { it.delay } ?: 0
+    val hasCooldownAnimation = frames.any { it.cooldown != null }
 
 
     fun play(weaponPlayer: WeaponPlayer, weaponType: WeaponType, offset: Int = 0, loop: Boolean = false) {
@@ -85,7 +86,7 @@ class AnimationClip(
         val player = weaponPlayer.player
         val weapon = weaponPlayer.weapon ?: return
 //        GunEngine.log("- weapon: ${weapon}")
-        weaponPlayer.stopAnimation()
+        weaponPlayer.stopAnimation(!hasCooldownAnimation)
         if(offset > 0) playAt(weaponPlayer, player, weaponType, offset)
         if(frames.size == 1 && frames[0].delay == 0) {
             frames[0].play(player, weaponType)?.let {

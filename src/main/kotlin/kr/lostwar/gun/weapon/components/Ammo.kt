@@ -1,5 +1,6 @@
 package kr.lostwar.gun.weapon.components
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.*
 import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
@@ -179,6 +180,7 @@ class Ammo(
                 else LoadEventType.EMPTY_RELOAD
             // 누군가한테 인터셉트 당해버렸으면 (Zoom ...)
             if(weapon.primaryAction != null) {
+//                GunEngine.log("reload intercepted(${weapon.primaryAction}), queueing reload ...")
                 weapon.currentLoadEvent = type
             }else{
                 loadAction(

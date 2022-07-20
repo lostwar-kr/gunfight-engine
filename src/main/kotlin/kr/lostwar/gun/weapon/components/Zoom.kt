@@ -1,14 +1,9 @@
 package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.weapon.*
-import kr.lostwar.gun.weapon.actions.LoadEventType
-import kr.lostwar.gun.weapon.actions.ShootAction
-import kr.lostwar.gun.weapon.actions.ZoomAction
+import kr.lostwar.gun.weapon.actions.*
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
-import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
-import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent
-import kr.lostwar.gun.weapon.event.WeaponClickEvent
-import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
+import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.util.AnimationClip
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Event
@@ -95,6 +90,17 @@ class Zoom(
 
         zoom(!weapon.isZooming)
     }
+
+    private val triggerListener = WeaponPlayerEventListener(WeaponTriggerEvent::class.java) { event ->
+        val weapon = event.weapon ?: return@WeaponPlayerEventListener
+        val currentAction = weapon.primaryAction
+        if(currentAction !is ZoomAction) {
+            return@WeaponPlayerEventListener
+        }
+        // 조준 중에는 발사 캔슬
+        event.isCancelled = true
+    }
+
     private val actionEndListener = WeaponPlayerEventListener(WeaponActionEndEvent::class.java, EventPriority.LOW) { event ->
         if(event.isWeaponChanged) {
             return@WeaponPlayerEventListener
@@ -172,6 +178,7 @@ class Zoom(
 
     override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
         clickListener,
+        triggerListener,
         actionEndListener,
         endHoldingListener,
         animationListener,
