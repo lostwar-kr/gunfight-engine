@@ -2,7 +2,7 @@ package kr.lostwar.vehicle.core
 
 import kr.lostwar.util.Config
 import kr.lostwar.vehicle.core.car.CarInfo
-import kr.lostwar.vehicle.core.uam.UAMInfo
+import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import org.bukkit.configuration.ConfigurationSection
 
 class VehicleType<T : VehicleInfo>(
@@ -28,10 +28,20 @@ class VehicleType<T : VehicleInfo>(
         return info as T
     }
 
+    override fun equals(other: Any?): Boolean {
+        if(other is VehicleType<*>) {
+            return other.name == name
+        }
+        if(other is Class<*>) {
+            return other == clazz
+        }
+        return super.equals(other)
+    }
+
     companion object {
         private val types = mutableListOf<VehicleType<out VehicleInfo>>(
             VehicleType("car", CarInfo::class.java),
-            VehicleType("uam", UAMInfo::class.java),
+            VehicleType("parachute", ParachuteInfo::class.java),
         )
         val registeredTypes by lazy { types.toList() }
         val registeredTypesByName by lazy { registeredTypes.associateBy { it.name } }

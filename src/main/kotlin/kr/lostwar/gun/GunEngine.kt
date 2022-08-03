@@ -9,6 +9,7 @@ import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponListener
 import kr.lostwar.gun.weapon.WeaponPlayer
+import kr.lostwar.util.ParticleInfo
 import kr.lostwar.util.ui.text.console
 import org.bukkit.command.Command
 import org.bukkit.event.Listener
@@ -54,14 +55,15 @@ object GunEngine : Engine("full-metal-jacket") {
 
     fun loadWeapons() {
         WeaponPlayer.byUUID.values.forEach {
-            val weapon = it.weapon ?: return
+            val weapon = it.weapon ?: return@forEach
             weapon.storeTo(it.player.inventory.itemInMainHand)
         }
 
+        ParticleInfo.load()
         WeaponType.load()
 
         WeaponPlayer.byUUID.values.forEach {
-            val weapon = it.weapon ?: return
+            val weapon = it.weapon ?: return@forEach
             weapon.type = WeaponType[weapon.type.key] ?: run {
                 it.updateCurrentWeapon()
                 return@forEach

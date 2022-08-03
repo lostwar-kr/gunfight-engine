@@ -5,7 +5,7 @@ import kr.lostwar.Engine
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.vehicle.core.VehicleEntity
 import kr.lostwar.vehicle.core.VehicleInfo
-import kr.lostwar.vehicle.core.uam.UAMEntity
+import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import org.bukkit.command.Command
 import org.bukkit.event.Listener
 
@@ -15,7 +15,7 @@ object VehicleEngine : Engine("andoo") {
 
     override val listeners: List<Listener> = listOf(
         VehicleEntity.Companion,
-        UAMEntity.Companion,
+        ParachuteInfo.Companion,
     )
     override val commands: List<Command> = listOf(
         VehicleCommand,
@@ -32,6 +32,10 @@ object VehicleEngine : Engine("andoo") {
     override fun onLateInit() {
         log("차량 불러오기 ...")
         loadVehicles()
+    }
+
+    override fun onUnload() {
+        VehicleEntity.byUUID.map { it.value }.forEach { it.death() }
     }
 
     fun loadVehicles() {

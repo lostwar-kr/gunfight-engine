@@ -1,19 +1,31 @@
 package kr.lostwar.vehicle.core
 
+import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
+import kr.lostwar.vehicle.core.VehicleEntity.Companion.onShootPrepare
+import kr.lostwar.vehicle.event.VehicleExitEvent
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
 
 class SeatEntity(
     val index: Int,
-    var info: VehicleModelInfo,
-    val entity: ArmorStand,
-    val vehicle: VehicleEntity<*>,
-) : ArmorStand by entity {
+    info: VehicleModelInfo,
+    entity: ArmorStand,
+    vehicle: VehicleEntity<*>,
+) : ModelEntity(info, entity, vehicle) {
 
-    operator fun component1() = info
-    operator fun component2() = entity
+    override var info: VehicleModelInfo
+        get() = super.info
+        set(value) {
+            super.info = value
+
+            turretEntitiesBySlot.clear()
+            turretEntitiesBySlot.putAll(vehicle.modelEntities.filter { it.value.info.turretInfo != null }.values.let {
+                HashMap<Int, MutableList<ModelEntity>>().groupBySlotIndex(it)
+            })
+
+        }
 
     var passenger: Player? = null
         set(value) {
@@ -43,9 +55,35 @@ class SeatEntity(
     }
 
     fun exit(): Boolean {
+        if(passenger != null) {
+            VehicleExitEvent(vehicle, passenger!!, this).callEvent()
+        }
         passenger = null
         entity.eject()
         return true
+    }
+
+    private fun MutableMap<Int, MutableList<ModelEntity>>.groupBySlotIndex(entities: Iterable<ModelEntity>) = apply {
+        for(model in entities) {
+            val turret = model.info.turretInfo ?: continue
+            for(index in turret.slotIndexes) {
+                getOrPut(index) { ArrayList() }.add(model)
+            }
+        }
+    }
+    val turretEntitiesBySlot = vehicle.modelEntities.filter { it.value.info.turretInfo != null }.values.let {
+        HashMap<Int, MutableList<ModelEntity>>().groupBySlotIndex(it)
+    }
+    val turretShootCountBySlot = Array(9) { 0 }
+    override fun onShoot(event: WeaponShootPrepareEvent) {
+        val player = passenger ?: return
+        val slot = player.inventory.heldItemSlot
+        val turrets = turretEntitiesBySlot[slot] ?: return
+        val size = turrets.size
+        val index = turretShootCountBySlot[slot] % size
+        val turret = turrets[index]
+        turret.onShoot(event)
+        turretShootCountBySlot[slot] += 1
     }
 
 }

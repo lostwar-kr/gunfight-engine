@@ -8,6 +8,7 @@ import kr.lostwar.util.math.VectorUtil.getBukkitVector
 import kr.lostwar.util.math.VectorUtil.toVectorString
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleHitbox.Companion.getVehicleHitbox
+import kr.lostwar.vehicle.core.VehicleTurretInfo.Companion.getTurretInfo
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.inventory.EquipmentSlot
@@ -20,9 +21,12 @@ class VehicleModelInfo(
     val hitbox: VehicleHitbox = VehicleHitbox.emptyHitbox,
     val item: ItemData = ItemData(Material.AIR),
     val isSmall: Boolean = false,
+    val noMarker: Boolean = false,
+    val parentKey: String? = null,
+    val turretInfo: VehicleTurretInfo? = null,
 ) {
-
-    val isKinematicEntity = !hitbox.isEmpty() && localPosition.y == 0.0
+    var parent: VehicleModelInfo? = null
+    val isKinematicEntity = !hitbox.isEmpty()
 
     companion object {
         val defaultModelInfo = VehicleModelInfo("default")
@@ -38,6 +42,9 @@ class VehicleModelInfo(
             val hitbox = section.getVehicleHitbox("hitbox") ?: default?.hitbox ?: VehicleHitbox.emptyHitbox
             val item = section.getItemData("item", default?.item ?: ItemData(Material.AIR))!!
             val small = section.getBoolean("small", default?.isSmall ?: false)
+            val noMarker = section.getBoolean("noMarker", default?.noMarker ?: false)
+            val parentKey = section.getString("parent")
+            val turretInfo = section.getTurretInfo("turret")
             return VehicleModelInfo(
                 key,
                 type,
@@ -45,6 +52,9 @@ class VehicleModelInfo(
                 hitbox,
                 item,
                 small,
+                noMarker,
+                parentKey,
+                turretInfo,
             )
         }
         fun ConfigurationSection.getModelInfoList(key: String, default: List<VehicleModelInfo> = emptyList()): List<VehicleModelInfo> {
@@ -77,6 +87,10 @@ class VehicleModelInfo(
 
             val small = (get("small") ?: default?.isSmall ?: false) as? Boolean
                 ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid isSmall")
+            val noMarker = (get("noMarker") ?: default?.noMarker ?: false) as? Boolean
+                ?: return VehicleEngine.logErrorNull("cannot parse ModelInfo: invalid noMarker")
+
+            val parentKey = (get("parent") ?: default?.parentKey) as? String
 
             return VehicleModelInfo(
                 key,
@@ -85,6 +99,9 @@ class VehicleModelInfo(
                 hitbox,
                 item,
                 small,
+                noMarker,
+                parentKey,
+                // no turret info at seat
             )
         }
     }

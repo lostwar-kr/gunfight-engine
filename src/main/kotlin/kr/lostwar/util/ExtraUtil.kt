@@ -49,8 +49,8 @@ object ExtraUtil {
     }
 
     private val armorStandOffsetMap = mapOf<EquipmentSlot, Vector>(
-        EquipmentSlot.HAND to Vector(-0.3125, 1.375, 0.0),
-        EquipmentSlot.OFF_HAND to Vector(+0.3125, 1.375, 0.0),
+        EquipmentSlot.HAND to Vector(+0.3125, 1.375, 0.0),
+        EquipmentSlot.OFF_HAND to Vector(-0.3125, 1.375, 0.0),
         EquipmentSlot.HEAD to Vector(0.0, 1.4375, 0.0),
     )
     val EquipmentSlot.armorStandOffset: Vector; get() = armorStandOffsetMap[this] ?: Vector()

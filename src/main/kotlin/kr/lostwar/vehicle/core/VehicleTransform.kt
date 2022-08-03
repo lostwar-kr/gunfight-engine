@@ -4,7 +4,8 @@ import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
-import org.bukkit.Axis
+import kr.lostwar.util.math.VectorUtil.normalized
+import kr.lostwar.util.math.VectorUtil.toYawPitch
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.util.EulerAngle
@@ -37,7 +38,7 @@ class VehicleTransform(
             .rotateAroundY(yaw)
              */
             // direction from yaw and pitch
-            forward = Vector(
+            forwardDirection = Vector(
                 cosPitch * sinYaw,
                 -sinPitch,
                 cosPitch * cosYaw,
@@ -64,17 +65,30 @@ class VehicleTransform(
                 + cosYaw * cosRoll - (forward.y * sinYaw) * sinRoll,
                 + (forward.z * cosYaw + forward.x * sinYaw) * sinRoll,
                 - sinYaw * cosRoll - (forward.y * cosYaw) * sinRoll,
-            ).normalize()
+            ).normalize().multiply(-1)
 
             // just cross product forward and right
-            up = forward.getCrossProduct(right).normalize()
+            up = right.getCrossProduct(forward).normalize()
 
             eulerAngleForPose = EulerAngle(pitch, 0.0, -roll)
+//            console("angle            : ${"&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(pitch, yaw, roll)}")
+//            console("eulerAngleForPose: ${eulerAngleForPose.run { "&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(x, y, z) }}")
         }
     var eulerAngleForPose = EulerAngle.ZERO; private set
 
     // local Z
-    var forward: Vector = VectorUtil.FORWARD; private set
+    private var forwardDirection: Vector = VectorUtil.FORWARD
+    var forward: Vector
+        get() = forwardDirection
+        set(value) {
+            val forward = value.normalized
+            val (yaw, pitch) = forward.toYawPitch()
+            rotation = Vector(pitch, yaw, 0f)
+            eulerAngleForPose = EulerAngle(pitch.toDouble(), 0.0, 0.0)
+            forwardDirection = forward
+            up = VectorUtil.UP
+            right = forward.getCrossProduct(up)
+        }
     // local X
     var right: Vector = VectorUtil.RIGHT; private set
     // local Y
@@ -88,6 +102,21 @@ class VehicleTransform(
         up = from.up.clone()
     }
 
+    fun applyRotation(localPosition: Vector): Vector {
+        val tx = localPosition.x
+        val ty = localPosition.y
+        val tz = localPosition.z
+
+        val x = right
+        val y = up
+        val z = forward
+
+        return Vector(
+            tx * x.x + ty * y.x + tz * z.x,
+            tx * x.y + ty * y.y + tz * z.y,
+            tx * x.z + ty * y.z + tz * z.z,
+        )
+    }
     fun localToWorld(localPosition: Vector): Vector {
         val tx = localPosition.x
         val ty = localPosition.y
@@ -109,7 +138,12 @@ class VehicleTransform(
             tx * x.y + ty * y.y + tz * z.y + position.y,
             tx * x.z + ty * y.z + tz * z.z + position.z,
         )
+    }
+    fun localToWorld(childLocal: VehicleTransform, childWorld: VehicleTransform, ignoreRotation: Boolean = false) {
+        childWorld.position = localToWorld(childLocal.position)
 
+        if(!ignoreRotation)
+            childWorld.eulerRotation = rotation.clone().add(childLocal.rotation)
     }
 
     fun transform(info: VehicleModelInfo): Vector {
@@ -125,6 +159,8 @@ class VehicleTransform(
             .toLocation(world)
             .setDirection(forward)
     }
+
+    fun toLocation(world: World) = position.toLocation(world).setDirection(forward)
 
     public override fun clone(): VehicleTransform {
         return VehicleTransform(position.clone(), rotation.clone()).also {

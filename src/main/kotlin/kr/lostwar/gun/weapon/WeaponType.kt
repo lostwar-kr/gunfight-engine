@@ -87,6 +87,7 @@ class WeaponType(
     lateinit var spread: Spread; private set
     var shoot: Shoot? = null; private set
     var zoom: Zoom? = null; private set
+    var recoil: Recoil? = null; private set
     private fun registerComponentAliases() {
         item = getComponent(Item::class.java)!!
         burst = getComponent(Burst::class.java)
@@ -97,6 +98,7 @@ class WeaponType(
         ammo = getComponent(Ammo::class.java)
         shoot = getComponent(Shoot::class.java)
         zoom = getComponent(Zoom::class.java)
+        recoil = getComponent(Recoil::class.java)
     }
 
     private fun load(parentWeapon: WeaponType?) {

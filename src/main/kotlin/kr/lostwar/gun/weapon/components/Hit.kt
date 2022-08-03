@@ -1,7 +1,7 @@
 package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.GunEngine
-import kr.lostwar.gun.setting.CustomMaterialSet
+import kr.lostwar.util.CustomMaterialSet
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
@@ -11,6 +11,9 @@ import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldin
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.block.BlockUtil
 import kr.lostwar.util.math.VectorUtil
+import kr.lostwar.util.math.VectorUtil.toLocationString
+import kr.lostwar.util.math.VectorUtil.toVectorString
+import kr.lostwar.util.ui.text.console
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
@@ -92,17 +95,23 @@ class Hit(
                 GunEngine.logWarn("invalid interaction key ${key} while loading $weapon")
                 continue
             }
-            map[interaction] = getResult(key, parent?.interactionMap?.get(interaction) ?: interaction.defaultResult)
+            map[interaction] = getResult(key, map[interaction] ?: interaction.defaultResult)
         }
+//        console("weapon ${weapon.key} - Hit component interactions")
         map
+//            .onEach { (interaction, hitBlock) ->
+//            console("- ${interaction.name}: ${hitBlock.types.joinToString()}")
+//        }
     }!!
 
 
     fun WeaponPlayer.hitBlock(location: Location, block: Block, hitNormal: Vector): HitBlock {
         val type = block.type
         var isEmptySpace: Boolean? = null
+//        console("hitBlock(${location.toVectorString()}, ${block.type})")
         for(interaction in HitBlockInteraction.registeredInteraction) {
             val inputResult = interactionMap[interaction] ?: interaction.defaultResult
+//            console("- ${interaction}: ${inputResult.types.joinToString(prefix = "[", postfix = "]")}")
             if(!inputResult.contains(type)) {
                 continue
             }
@@ -115,6 +124,7 @@ class Hit(
                     continue
                 }
             }
+//            console("! hit ${interaction}")
             val outputResult = interaction.onHit(this, this@Hit, inputResult, block, hitNormal)
             return outputResult
         }
@@ -128,14 +138,13 @@ class Hit(
 }
 
 data class HitBlock(
-    val types: Set<Material>,
+    val types: Set<Material>?,
     val checkIsEmptySpace: Boolean,
     val blockRay: Boolean,
     val pierceSolid: Boolean,
     val resistance: Double,
-    private val checkContains: (Material) -> Boolean = { types.contains(it) }
 ) {
-    operator fun contains(material: Material) = checkContains(material)
+    operator fun contains(material: Material) = types?.contains(material) ?: true
     companion object {
         fun ConfigurationSection.getResult(key: String, default: HitBlock): HitBlock {
             val section = getConfigurationSection(key) ?: return default
@@ -155,12 +164,17 @@ data class HitBlock(
                     set
                 }
 
-            return HitBlock(types, checkIsEmptySpace, blockRay, pierceSolid, resistance, default.checkContains)
+            return HitBlock(types, checkIsEmptySpace, blockRay, pierceSolid, resistance)
         }
 
         private fun MutableSet<Material>.apply(rawType: String, default: HitBlock) {
+            val defaultTypes = default.types
+            if(defaultTypes == null) {
+                GunEngine.logWarn("redefining fallback hitblock material set detected")
+                return
+            }
             if(rawType == "default") {
-                addAll(default.types)
+                addAll(defaultTypes)
                 return
             }
             if(!rawType.contains('.')){
@@ -191,19 +205,18 @@ class HitBlockInteraction(
 
     companion object {
         val builtInCollideInteraction = HitBlockInteraction("collide", HitBlock(
-            emptySet(),
+            null,
             true,
             true,
             false,
             1.0,
-            { true }
         )) { hitBlock, result, block, hitNormal ->
 
             result
         }
         private val interactions = mutableListOf<HitBlockInteraction>(
             HitBlockInteraction("ignore", HitBlock(
-                CustomMaterialSet.completelyPasssable,
+                CustomMaterialSet.completelyPassable,
                 false,
                 false,
                 false,
@@ -235,6 +248,10 @@ class HitBlockInteraction(
         val registeredInteraction by lazy { interactions + builtInCollideInteraction }
         val registeredInteractionMap by lazy { registeredInteraction.associateBy { it.name } }
 
+    }
+
+    override fun toString(): String {
+        return name
     }
 
     override fun hashCode(): Int {

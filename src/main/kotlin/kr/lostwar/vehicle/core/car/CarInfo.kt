@@ -22,6 +22,11 @@ open class CarInfo(
     val accelerationBackward: Double = getDouble("car.engine.accelerationBackward", parent?.accelerationBackward, 0.3)
     val maxSpeed: Double = getDouble("car.engine.maxSpeed", parent?.maxSpeed, 1.0)
     val maxSpeedBackward: Double = getDouble("car.engine.maxSpeedBackward", parent?.maxSpeedBackward, 0.3)
+    val forwardPitchAngleInRadian: Double = getDouble("car.engine.pitch.forwardAngle", parent?.forwardPitchAngleInRadian?.toDegrees(), 0.0).toRadians()
+    val backPitchAngleInRadian: Double = getDouble("car.engine.pitch.backAngle", parent?.backPitchAngleInRadian?.toDegrees(), 0.0).toRadians()
+    val pitchLerpSpeed: Double = getDouble("car.engine.pitch.lerpSpeed", parent?.pitchLerpSpeed, 1.0)
+
+
     val engineSound: SoundClip = getSoundClip("car.engine.sound", parent?.engineSound)
     val engineSoundPitchRange: ClosedFloatingPointRange<Float> =
         getFloatRange("car.engine.soundPitchRange", parent?.engineSoundPitchRange, 0f..2f, 0f..2f)
@@ -32,6 +37,7 @@ open class CarInfo(
     val steerRecoverInRadian: Double = getDouble("car.steer.recover", parent?.steerRecoverInRadian?.toDegrees(), 1.0).toRadians()
     val steerMaxAngleInRadian: Double = getDouble("car.steer.maxAngle", parent?.steerMaxAngleInRadian?.toDegrees(), 30.0).toRadians()
     val steerMaxAngleRangeInRadian = -steerMaxAngleInRadian .. steerMaxAngleInRadian
+    val steerMinimumSteeringPower: Double = getDouble("car.steer.minimumSteeringPower", parent?.steerMinimumSteeringPower, 0.0)
     // roll이 반대로 적용되어 , , 부호를 음수로 적용함
     val steerRollAngleInRadian: Double = -getDouble("car.steer.roll.angle", parent?.steerRollAngleInRadian?.toDegrees(), 5.0).toRadians()
     val steerRollLerpSpeed: Double = getDouble("car.steer.roll.lerpSpeed", parent?.steerRollLerpSpeed, 1.0)
@@ -45,6 +51,23 @@ open class CarInfo(
         }
     val boatWaterFriction: Double = getDouble("car.physics.waterFriction", parent?.boatWaterFriction, 1.0)
     val boatLandFrictionMultiplier: Double = getDouble("car.physics.landFrictionMultiplier", parent?.boatLandFrictionMultiplier, 1.0)
+
+    val canVerticalMove: Boolean = getBoolean("car.canVerticalMove", parent?.canVerticalMove, false)
+    val upMaxSpeed: Double = getDouble("car.engine.up.maxSpeed", parent?.upMaxSpeed, if(canVerticalMove) 1.0 else 0.0)
+    val upAcceleration: Double = getDouble("car.engine.up.acceleration", parent?.upAcceleration, if(canVerticalMove) 0.05 else 0.0)
+    val upDeceleration: Double = getDouble("car.engine.up.deceleration", parent?.upDeceleration, if(canVerticalMove) 0.05 else 0.0)
+    val upNaturalDeceleration: Double = getDouble("car.engine.up.naturalDeceleration", parent?.upNaturalDeceleration, if(canVerticalMove) 0.05 else 0.0)
+
+    val downMaxSpeed: Double = getDouble("car.engine.down.maxSpeed", parent?.downMaxSpeed, if(canVerticalMove) 1.0 else 0.0)
+    val downAcceleration: Double = getDouble("car.engine.down.acceleration", parent?.downAcceleration, if(canVerticalMove) 0.05 else 0.0)
+    val downDeceleration: Double = getDouble("car.engine.down.deceleration", parent?.downDeceleration, if(canVerticalMove) 0.05 else 0.0)
+    val downNaturalDeceleration: Double = getDouble("car.engine.down.naturalDeceleration", parent?.downNaturalDeceleration, if(canVerticalMove) 0.05 else 0.0)
+
+    val naturalDownRequireForwardSpeed: Double = getDouble("car.engine.naturalDown.requireForwardSpeed", parent?.naturalDownRequireForwardSpeed, if(canVerticalMove) 0.2 else 0.0)
+    val naturalDownRequireBackwardSpeed: Double = getDouble("car.engine.naturalDown.requireBackwardSpeed", parent?.naturalDownRequireBackwardSpeed, if(canVerticalMove) 0.1 else 0.0)
+    val naturalDownAcceleration: Double = getDouble("car.engine.naturalDown.acceleration", parent?.naturalDownAcceleration, if(canVerticalMove) 0.02 else 0.0)
+    val naturalDownDeceleration: Double = getDouble("car.engine.naturalDown.deceleration", parent?.naturalDownDeceleration, if(canVerticalMove) 0.02 else 0.0)
+    val naturalDownMaxSpeed: Double = getDouble("car.engine.naturalDown.maxSpeed", parent?.naturalDownMaxSpeed, if(canVerticalMove) 0.2 else 0.0)
 
     override fun spawn(location: Location, decoration: Boolean) = CarEntity(this, location, decoration)
 

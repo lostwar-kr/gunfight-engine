@@ -1,6 +1,5 @@
 package kr.lostwar.gun.weapon.components
 
-import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.gun.weapon.WeaponType
@@ -8,12 +7,15 @@ import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponHitscanShootEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.gun.weapon.event.WeaponShootEvent
-import kr.lostwar.util.DrawUtil
+import kr.lostwar.util.ParticleSet
+import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.dot
+import kr.lostwar.util.math.VectorUtil.localToWorld
 import kr.lostwar.util.math.VectorUtil.normalized
+import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.nms.NMSUtil
 import kr.lostwar.util.nms.NMSUtil.rayTraceBlocksPiercing
-import kr.lostwar.vehicle.util.ExtraUtil.getOutline
+import kr.lostwar.util.plus
 import org.bukkit.*
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.EntityType
@@ -50,6 +52,9 @@ class Hitscan(
         catch (_: Exception) { null }
     }
 
+    val effectAsProjectile: ParticleSet = getParticleSet("effect.projectile", parent?.effectAsProjectile)
+    val effectAsProjectileOffset: Vector = getVector("effect.projectileOffset", parent?.effectAsProjectileOffset)
+
     private fun calculateRangeModifier(distance: Double) = damageRangeModifier.pow(distance / rangeModifierConstant)
 
     private val onShoot = WeaponPlayerEventListener(WeaponShootEvent::class.java) { event ->
@@ -77,7 +82,12 @@ class Hitscan(
             (Random.nextDouble() - Random.nextDouble()),
         ).multiply(spread * 0.1)
         val rayDirection = ray.direction.clone().add(spreadVector).normalize()
+
         hitscanShootEvent.onShoot.forEach { it.invoke(this, rayPosition, rayDirection) }
+
+        val projectileEffectPosition = ray.plus(effectAsProjectileOffset.localToWorld(rayDirection))
+        effectAsProjectile.executeEach { it.spawnAt(projectileEffectPosition, source = player, offset = rayDirection, count = 0) }
+
         val minimumThickness = min(farThickness, nearThickness)
 
         // 거리에 따른 범위 구하기

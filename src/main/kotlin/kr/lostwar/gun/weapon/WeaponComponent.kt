@@ -4,11 +4,14 @@ import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.components.*
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.AnimationClip.Companion.getAnimationClipOrNull
+import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
+import kr.lostwar.util.math.VectorUtil.getBukkitVector
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Event
+import org.bukkit.util.Vector
 import org.jetbrains.annotations.Contract
 
 abstract class WeaponComponent(
@@ -31,6 +34,7 @@ abstract class WeaponComponent(
             Shoot::class.java,
             Hitscan::class.java,
             Zoom::class.java,
+            Recoil::class.java,
         )
         fun register(clazz: Class<out WeaponComponent>) {
             components.add(clazz)
@@ -117,11 +121,17 @@ abstract class WeaponComponent(
     protected fun getItemData(key: String, parentDef: ItemData?, def: ItemData? = null): ItemData? {
         return get(key, parentDef, def) { k -> getItemData(k, null) }
     }
+    protected fun getVector(key: String, parentDef: Vector?, def: Vector = Vector()): Vector {
+        return get(key, parentDef, def) { k -> getBukkitVector(k) }!!
+    }
     protected fun getSoundClip(key: String, parentDef: SoundClip?, def: SoundClip = SoundClip.emptyClip): SoundClip {
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
     protected fun getAnimationClip(key: String, parentDef: AnimationClip?, def: AnimationClip = AnimationClip.emptyClip): AnimationClip {
-        return get(key, parentDef, def) { k -> getAnimationClipOrNull(this, k) }!!
+        return get(key, parentDef?.takeIf { it.isNotEmpty() }, def) { k -> getAnimationClipOrNull(this, k) }!!
+    }
+    protected fun getParticleSet(key: String, parentDef: ParticleSet?, def: ParticleSet = ParticleSet.emptySet): ParticleSet {
+        return get(key, parentDef?.takeIf { it.isNotEmpty() }, def) { k -> ParticleSet.getParticleSetOrNull(this, k) }!!
     }
 
     fun lateInit() {

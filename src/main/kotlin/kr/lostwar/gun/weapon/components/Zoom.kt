@@ -28,6 +28,8 @@ class Zoom(
     val applyUnzoomEffectLazy: Boolean = getBoolean("applyUnzoomEffectLazy", parent?.applyUnzoomEffectLazy, false)
 
     val spread: Double = getDouble("spread", parent?.spread)
+    val verticalRecoilModifier: Double = getDouble("recoil.vertical", parent?.verticalRecoilModifier, 0.0)
+    val horizontalRecoilModifier: Double = getDouble("recoil.horizontal", parent?.horizontalRecoilModifier, 0.0)
 
     val singleShootAnimation: AnimationClip = getAnimationClip("animation.shoot", parent?.singleShootAnimation)
     val fullAutoShootLoopAnimation: AnimationClip = getAnimationClip("animation.fullAutoShootLoop", parent?.fullAutoShootLoopAnimation)
@@ -188,6 +190,10 @@ class Zoom(
     override fun onLateInit() {
         // 조준 중에는 베이스 탄퍼짐 강제로 설정
         weapon.spread.registerFactor(WeaponSpreadFunction(Int.MIN_VALUE) { if(weapon?.isZooming == true) spread else it })
+        weapon.recoil?.let { recoil ->
+            recoil.vertical.registerFactor { verticalRecoilModifier }
+            recoil.horizontal.registerFactor { horizontalRecoilModifier }
+        }
     }
 
     override fun onInstantiate(weapon: Weapon) {

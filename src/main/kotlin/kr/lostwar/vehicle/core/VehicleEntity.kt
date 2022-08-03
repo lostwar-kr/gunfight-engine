@@ -7,14 +7,17 @@ import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
+import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.DrawUtil
+import kr.lostwar.util.ExtraUtil.armorStandOffset
+import kr.lostwar.util.math.VectorUtil.ZERO
+import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.VectorUtil.toYawPitch
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
-import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -35,18 +38,28 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerItemHeldEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
 import org.spigotmc.event.entity.EntityDismountEvent
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 open class VehicleEntity<T : VehicleInfo>(
     base: T,
     val spawnLocation: Location,
     val decoration: Boolean = false,
 ) {
+    init {
+        // 오프셋이 음수로 설정된 히트박스 기반으로 스폰 위치 결정
+        val kinematicBaseY = base.models.values
+            .filter { it.isKinematicEntity }
+            .minOf { it.localPosition.y }
+        spawnLocation.add(0.0, -kinematicBaseY, 0.0)
+    }
     val world = spawnLocation.world
     private var internalPrimaryEntity: ArmorStand? = null
         set(entity) {
@@ -73,21 +86,18 @@ open class VehicleEntity<T : VehicleInfo>(
         if(modelEntities.size != newBase.models.size) {
             VehicleEngine.logWarn("unsafe hot reload at ${base.key}: inconsistency model count")
         }
-        modelEntities.mapKeys { (info, entity) ->
-            newBase.models[info.key] ?: info
-        }.also { modelEntities.clear() }.forEach { (info, entity) ->
-            modelEntities[info] = entity.apply {
-                info.hitbox.apply(this)
-            }
+        modelEntities.forEach { (key, entity) ->
+            entity.info = newBase.models[key] ?: entity.info
+            entity.info.hitbox.apply(entity.entity)
         }
         kinematicEntities.clear()
-        kinematicEntities.putAll(modelEntities.filter { it.key.isKinematicEntity }.onEach { (info, entity) ->
-            entity.setMaxUpStep(base.upStep)
+        kinematicEntities.putAll(modelEntities.filter { it.value.info.isKinematicEntity }.onEach { (info, entity) ->
+            entity.entity.setMaxUpStep(base.upStep)
         })
         kinematicEntitiesSortedByZ.clear()
-        kinematicEntitiesSortedByZ.addAll(kinematicEntities.entries.sortedByDescending { it.key.localPosition.z })
+        kinematicEntitiesSortedByZ.addAll(kinematicEntities.entries.sortedByDescending { it.value.info.localPosition.z })
         nonKinematicEntities.clear()
-        nonKinematicEntities.putAll(modelEntities.filter { !it.key.isKinematicEntity })
+        nonKinematicEntities.putAll(modelEntities.filter { !it.value.info.isKinematicEntity })
         if(seatEntities.size != newBase.seats.size) {
             VehicleEngine.logWarn("unsafe hot reload at ${base.key}: inconsistency seat count")
         }
@@ -95,7 +105,7 @@ open class VehicleEntity<T : VehicleInfo>(
             if(newBase.seats.size <= index) return@forEachIndexed
             entity.apply {
                 info = newBase.seats[index]
-                info.hitbox.apply(this)
+                info.hitbox.apply(this.entity)
             }
         }
     }
@@ -109,32 +119,54 @@ open class VehicleEntity<T : VehicleInfo>(
 
     var velocity: Vector = Vector()
 
-    val modelEntities = base.models.mapKeys { it.value }.mapValues { spawnModel(it.value) }.toMutableMap()
-    val kinematicEntities = modelEntities.filter { it.key.isKinematicEntity }.toMutableMap()
-        .onEach { (info, entity) ->
-            entity.setMaxUpStep(base.upStep)
-            entity.setDiscardFriction(true)
+    val modelEntities = base.models
+        .mapValues { ModelEntity(it.value, spawnModel(it.value), this) }
+        .toMutableMap()
+        .also { map ->
+            map.forEach { (key, entity) ->
+                val parentInfo = entity.info.parent ?: return@forEach
+                entity.parent = map[parentInfo.key]
+            }
         }
-    val kinematicEntitiesSortedByZ = kinematicEntities.entries.sortedByDescending { it.key.localPosition.z }.toMutableList()
-    val nonKinematicEntities = modelEntities.filter { !it.key.isKinematicEntity }.toMutableMap()
+    val kinematicEntities = modelEntities.filter { it.value.info.isKinematicEntity }.toMutableMap()
+        .onEach { (info, entity) ->
+            entity.entity.setMaxUpStep(base.upStep)
+            entity.entity.setDiscardFriction(true)
+        }
+    val kinematicEntitiesSortedByZ = kinematicEntities.entries.sortedByDescending { it.value.info.localPosition.z }.toMutableList()
+    val nonKinematicEntities = modelEntities.filter { !it.value.info.isKinematicEntity }.toMutableMap()
 
-    val seatEntities = base.seats.mapIndexed { index, it -> SeatEntity(index, it, spawnModel(it), this) }.toMutableList()
+    val seatEntities = base.seats
+        .mapIndexed { index, it -> SeatEntity(index, it, spawnModel(it), this) }
+        .toMutableList()
+        .also { list ->
+            list.forEach { entity ->
+                val parentInfo = entity.info.parent ?: return@forEach
+                entity.parent = modelEntities[parentInfo.key]
+            }
+        }
     val driverSeat = seatEntities[0]
+    fun isRiding(entity: Entity?): Boolean {
+        if(entity == null) return false
+        return seatEntities.any { it.passenger?.entityId == entity.entityId }
+    }
 
     protected open fun spawnModel(info: VehicleModelInfo): ArmorStand {
         val worldPosition = transform.transform(info, world)
         return (world.spawnEntity(worldPosition, EntityType.ARMOR_STAND) as ArmorStand).apply {
             isSmall = info.isSmall
 
-            isInvisible = true
+            isInvisible = !isDebugging
             setGravity(false)
             if(!info.isKinematicEntity) {
-                isMarker = true
+                isMarker = !info.noMarker
                 isInvulnerable = true
             }else{
+//                console("info ${info.key} is kinematic")
                 maxHealth = base.health
                 health = base.health
             }
+//            console("info ${info.key} hitbox size: ${info.hitbox}")
             info.hitbox.apply(this)
             if(info.type == EquipmentSlot.HAND || info.type == EquipmentSlot.OFF_HAND) {
                 setArms(true)
@@ -145,13 +177,16 @@ open class VehicleEntity<T : VehicleInfo>(
             addEquipmentLock(info.type, ArmorStand.LockType.REMOVING_OR_CHANGING)
             setMetadata(Constants.vehicleEntityKey, FixedMetadataValue(plugin, internalPrimaryEntity?.uniqueId ?: uniqueId.also {
                 internalPrimaryEntity = this
-                byUUID[it] = this@VehicleEntity
             }))
 
             if(decoration) {
                 setGravity(false)
             }
         }
+    }
+    var livingTicks = 0
+    init {
+        byUUID[uniqueId] = this
     }
 
     private val aabbParticle = Particle.DustOptions(Color.WHITE, 0.5f)
@@ -173,13 +208,17 @@ open class VehicleEntity<T : VehicleInfo>(
         onTick()
         onLateTick()
         processDamage()
+        ++livingTicks
     }
     protected open fun onTick() {
         if(isDebugging) {
             // 로컬 축 그리기
-            DrawUtil.drawPoints((0..10).map { transform.forward * (it / 10.0) + transform.position }, Particle.DustOptions(Color.BLUE   , 0.5f))
-            DrawUtil.drawPoints((0..10).map { transform.right * (it / 10.0) + transform.position }  , Particle.DustOptions(Color.RED    , 0.5f))
-            DrawUtil.drawPoints((0..10).map { transform.up * (it / 10.0) + transform.position }     , Particle.DustOptions(Color.GREEN  , 0.5f))
+            DrawUtil.drawPoints(DrawUtil.getRay(transform.position, transform.forward * 5, 10)  ,Particle.DustOptions(Color.BLUE   , 0.5f))
+            DrawUtil.drawPoints(DrawUtil.getRay(transform.position, transform.right * 5, 10)    ,Particle.DustOptions(Color.RED    , 0.5f))
+            DrawUtil.drawPoints(DrawUtil.getRay(transform.position, transform.up * 5, 10)       ,Particle.DustOptions(Color.GREEN  , 0.5f))
+//            DrawUtil.drawPoints((0..40).map { transform.forward * (it / 10.0) + transform.position }, Particle.DustOptions(Color.BLUE   , 0.5f))
+//            DrawUtil.drawPoints((0..40).map { transform.right * (it / 10.0) + transform.position }  , Particle.DustOptions(Color.RED    , 0.5f))
+//            DrawUtil.drawPoints((0..40).map { transform.up * (it / 10.0) + transform.position }     , Particle.DustOptions(Color.GREEN  , 0.5f))
         }
 
         /*
@@ -201,24 +240,42 @@ open class VehicleEntity<T : VehicleInfo>(
         */
     }
     protected open fun updateChildEntities() {
-        nonKinematicEntities.forEach { (info, entity) ->
-            val location = transform.transform(info, world)
+        nonKinematicEntities.forEach { (key, entity) ->
+            entity.tick()
+            val transform = entity.worldTransform
+            val location = entity.worldLocation
             entity.teleport(location)
-            if(info.item.type != Material.AIR) {
-                entity.setPose(info.type, transform.eulerAngleForPose)
+            if(entity.info.item.type != Material.AIR) {
+                entity.setPose(entity.info.type, transform.eulerAngleForPose)
             }
-            if(isDebugging && !info.hitbox.isEmpty()) {
-                DrawUtil.drawPoints(entity.boundingBox.getOutline(4), aabbParticle)
+            if(isDebugging) {
+                val localPosition = entity.info.localPosition
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position + transform.right * localPosition.x, transform.forward * localPosition.z, 10)  ,Particle.DustOptions(Color.BLUE   , 0.5f))
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position + transform.forward * localPosition.z, transform.right * localPosition.x, 10)    ,Particle.DustOptions(Color.RED    , 0.5f))
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position + transform.right * localPosition.x + transform.forward * localPosition.z, transform.up * localPosition.y, 10)       ,Particle.DustOptions(Color.GREEN  , 0.5f))
+                if(!entity.info.hitbox.isEmpty()) {
+                    DrawUtil.drawPoints(entity.boundingBox.getOutline(4), aabbParticle)
+                }
             }
         }
         if(isDebugging) kinematicEntities.forEach { (info, entity) ->
             DrawUtil.drawPoints(entity.boundingBox.getOutline(4), aabbParticle)
         }
-        seatEntities.forEach { (info, entity) ->
-            val location = transform.transform(info, world)
-            entity.teleport(location)
+        seatEntities.forEach { entity ->
+            entity.tick()
+            val transform = entity.worldTransform
+            val info = entity.info
+            val location = entity.worldLocation
+            // 탑승자 있는 상태에서 teleport 하므로 ignorePassengers
+            entity.teleport(location, true)
             if(info.item.type != Material.AIR) {
                 entity.setPose(info.type, transform.eulerAngleForPose)
+            }
+            if(isDebugging) {
+                val localPosition = info.localPosition - if(info.hitbox.isEmpty()) info.type.armorStandOffset else ZERO
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position, transform.forward * localPosition.z, 10)  ,Particle.DustOptions(Color.BLUE   , 0.5f))
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position + transform.forward * localPosition.z, transform.right * localPosition.x, 10)    ,Particle.DustOptions(Color.RED    , 0.5f))
+                DrawUtil.drawPoints(DrawUtil.getRay(transform.position + transform.right * localPosition.x + transform.forward * localPosition.z, transform.up * localPosition.y, 10)       ,Particle.DustOptions(Color.GREEN  , 0.5f))
             }
         }
     }
@@ -244,7 +301,12 @@ open class VehicleEntity<T : VehicleInfo>(
         }
 
         // 탑승하고 있는 차량에 대한 피해는 지형 충돌로 인한 피해를 제외하고 무시
-        if(cause != Constants.collisionDamageCause && damager?.vehicleEntityIdOrNull == this.uniqueId && amount > 0) {
+        if(cause != Constants.collisionDamageCause && damager?.vehicleEntityIdOrNull == this.uniqueId) {
+            return
+        }
+
+        // 탑승자가 자기 차량을 때리는 경우 무시
+        if(isRiding(damager)) {
             return
         }
 
@@ -344,6 +406,14 @@ open class VehicleEntity<T : VehicleInfo>(
     }
 
     open fun ride(player: Player, forced: Boolean = false): Int {
+        fun Int.onRide(): Int {
+            if(base.disableDriverExitVehicleByShiftKey) {
+                // 착석 성공했을 때 Shift 하차 아닌 경우
+                player.inventory.heldItemSlot = 0
+            }
+            return this
+        }
+
         if(!forced) {
             if(decoration || isDead || player.gameMode == GameMode.SPECTATOR) return -1
         }
@@ -357,15 +427,15 @@ open class VehicleEntity<T : VehicleInfo>(
             var nextSeatIndex = (seatEntity.index + 1) % seatCount
             while(nextSeatIndex != seatEntity.index) {
                 if(seatEntities[nextSeatIndex].ride(player)) {
-                    return nextSeatIndex
+                    return nextSeatIndex.onRide()
                 }
-                nextSeatIndex = (seatEntity.index + 1) % seatCount
+                nextSeatIndex = (nextSeatIndex + 1) % seatCount
             }
             return -1
         }
         for((index, seatEntity) in seatEntities.withIndex()) {
             if(seatEntity.ride(player)) {
-                return index
+                return index.onRide()
             }
         }
         return -1
@@ -484,6 +554,28 @@ open class VehicleEntity<T : VehicleInfo>(
             vehicle.damage(damage, DamageCause.CUSTOM, entity, player.player, weapon)
         }
 
+        @EventHandler
+        fun PlayerItemHeldEvent.onItemHeld() {
+            val player = player
+            val riding = player.vehicle ?: return
+            val vehicle = riding.asVehicleEntityOrNull ?: return
+            if(!vehicle.base.disableDriverExitVehicleByShiftKey) return
+            if(riding.entityId != vehicle.driverSeat.entityId) return
+
+            if(previousSlot != newSlot && newSlot == 8) {
+                isCancelled = true
+                vehicle.exit(riding as ArmorStand, player)
+            }
+        }
+
+        @EventHandler
+        fun WeaponShootPrepareEvent.onShootPrepare() {
+            val player = player.player
+            val riding = player.vehicle ?: return
+            val vehicle = riding.asVehicleEntityOrNull ?: return
+            val seat = vehicle.seatEntities.find { it.entityId == riding.entityId } ?: return
+            seat.onShoot(this)
+        }
     }
 
     override fun hashCode(): Int {

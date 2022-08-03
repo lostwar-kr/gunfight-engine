@@ -1,13 +1,17 @@
 package kr.lostwar.vehicle.core
 
 import kr.lostwar.util.Config
+import kr.lostwar.util.ConfigUtil
+import kr.lostwar.util.ConfigUtil.getFloatRange
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.SoundInfo
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
+import kr.lostwar.util.ui.text.consoleWarn
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfoList
+import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import org.bukkit.Location
 import org.bukkit.Sound
 import org.bukkit.configuration.ConfigurationSection
@@ -31,12 +35,34 @@ abstract class VehicleInfo(
         val section = getConfigurationSection(parentKey) ?: return@get null
         val parent = this@VehicleInfo.parent
         val parentModels = parent?.models ?: emptyMap()
-        section.getKeys(false).mapNotNull { key -> section.getModelInfo(key, parentModels[key]) }.associateBy { it.key }
+        section.getKeys(false)
+            .mapNotNull { key -> section.getModelInfo(key, parentModels[key]) }
+            .associateBy { it.key }
+            .also { map ->
+                map.forEach { (key, info) ->
+                    if(info.parentKey == null) return@forEach
+                    info.parent = map[info.parentKey]
+                        ?. takeIf { it.parentKey != info.parentKey }
+                        ?: run {
+                            consoleWarn("failed to assign parent on ${info.key} to ${info.parentKey}")
+                            null
+                        }
+                }
+            }
     }!!
 
     val seats: List<VehicleModelInfo> = get("seat", parent?.seats, emptyList()) {parentKey ->
         val parent = this@VehicleInfo.parent
         getModelInfoList(parentKey, parent?.seats ?: emptyList())
+            .onEach { info ->
+                if(info.parentKey == null) return@onEach
+                info.parent = models[info.parentKey]
+                    ?. takeIf { it.parentKey != info.parentKey }
+                    ?: run {
+                        consoleWarn("failed to assign parent on seat ${info.key} to ${info.parentKey}")
+                        null
+                    }
+            }
     }!!
 
     val health: Double = getDouble("entity.health", parent?.health, 100.0)
@@ -99,16 +125,7 @@ abstract class VehicleInfo(
         clampRange: ClosedFloatingPointRange<Float>?
     ): ClosedFloatingPointRange<Float> {
         return get(key, parentDef, def) {
-            val raw = getString(key) ?: return@get null
-            val split = raw.split("..").map { it.trim() }
-            if(split.size != 2) {
-                return@get VehicleEngine.logErrorNull("cannot parse range: ${raw}")
-            }
-            val min = split[0].toFloatOrNull()
-                ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid minimum value: ${split[0]})")
-            val max = split[1].toFloatOrNull()
-                ?: return@get VehicleEngine.logErrorNull("cannot parse range: ${raw} (invalid maximum value: ${split[1]})")
-            Math.min(min, max).coerceAtLeast(clampRange?.start ?: -Float.MAX_VALUE) .. Math.max(min, max).coerceAtMost(clampRange?.endInclusive ?: Float.MAX_VALUE)
+            with(ConfigUtil) { getFloatRangeOrNull(key, clampRange) }
         }!!
     }
 
@@ -118,8 +135,10 @@ abstract class VehicleInfo(
     companion object {
         private val registeredVehicles = HashMap<String, RegisteredVehicleInfo>()
         val byKey = HashMap<String, VehicleInfo>()
+        var primaryParachute: ParachuteInfo? = null
         fun load() {
             registeredVehicles.clear()
+            primaryParachute = null
             byKey.clear()
 
             val vehiclePath = VehicleEngine.directory + "vehicles/"

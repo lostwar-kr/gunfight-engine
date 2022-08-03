@@ -1,4 +1,4 @@
-package kr.lostwar.gun.setting
+package kr.lostwar.util
 
 import com.destroystokyo.paper.MaterialSetTag
 import com.destroystokyo.paper.MaterialTags
@@ -48,12 +48,12 @@ class CustomMaterialSet(
                 )
             ).flatten().toSet()
         }
-        val completelyPasssable = CustomMaterialSet("completely_passable") {
+        val completelyPassable = CustomMaterialSet("completely_passable") {
             listOf(
                 MaterialSetTag.RAILS.values,
                 MaterialSetTag.SIGNS.values,
                 MaterialSetTag.STANDING_SIGNS.values,
-                MaterialSetTag.LEAVES.values,
+//                MaterialSetTag.LEAVES.values,
                 MaterialSetTag.WALL_SIGNS.values,
                 MaterialSetTag.WOOL_CARPETS.values,
                 MaterialSetTag.PRESSURE_PLATES.values,
@@ -77,7 +77,7 @@ class CustomMaterialSet(
         }
         val passable = CustomMaterialSet("passable") {
             listOf(
-                completelyPasssable,
+                completelyPassable,
                 MaterialSetTag.WOODEN_FENCES.values,
                 MaterialSetTag.FENCE_GATES.values,
                 MaterialSetTag.BEDS.values,
@@ -99,7 +99,7 @@ class CustomMaterialSet(
             airs,
             fluids,
             plants,
-            completelyPasssable,
+            completelyPassable,
         )
     }
 

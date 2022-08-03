@@ -23,7 +23,7 @@ class Ammo(
 ) : WeaponComponent(config, weapon, parent) {
 
     val amount: Int = getInt("amount", parent?.amount, 0)
-    val startAmount: Int = getInt("startAmount", parent?.startAmount, amount)
+    val startAmount: Int = getInt("startAmount", amount)
 
     val canReload: Boolean = getBoolean("reload.enable", parent?.canReload, true)
     val reloadEmptyAmmoDelay: Int = getInt("reload.emptyAmmoDelay", parent?.reloadEmptyAmmoDelay, 5)

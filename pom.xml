@@ -17,7 +17,7 @@
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>17</kotlin.compiler.jvmTarget>
         <kotlin.version>1.6.10</kotlin.version>
-        <minecraft.version>1.19</minecraft.version>
+        <minecraft.version>1.19.1</minecraft.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
 
@@ -28,6 +28,7 @@
         <pigeonlib.kotlin-plugin.directory>${pigeonlib.directory}/${pigeonlib.kotlin-plugin.file}</pigeonlib.kotlin-plugin.directory>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <maven.compiler.useIncrementalCompilation>true</maven.compiler.useIncrementalCompilation>
+        <NEXUS-HOST>marsys.kr:10012</NEXUS-HOST>
     </properties>
 
     <repositories>
@@ -43,7 +44,22 @@
             <id>mavenCentral</id>
             <url>https://repo1.maven.org/maven2/</url>
         </repository>
+<!--        <repository>-->
+<!--            <id>nexus</id>-->
+<!--            <url>http://${NEXUS-HOST}/repository/maven-public/</url>-->
+<!--        </repository>-->
     </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <url>http://${NEXUS-HOST}/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <url>http://${NEXUS-HOST}/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <build>
         <sourceDirectory>src/main/kotlin</sourceDirectory>
@@ -108,46 +124,6 @@
                     </artifactSet>
                 </configuration>
             </plugin>
-<!--            <plugin>-->
-<!--                <groupId>net.md-5</groupId>-->
-<!--                <artifactId>specialsource-maven-plugin</artifactId>-->
-<!--                <version>1.2.4</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>remap</goal>-->
-<!--                        </goals>-->
-<!--                        <id>remap-obf</id>-->
-<!--                        <configuration>-->
-<!--                            <inputFile>-->
-<!--                                ${project.build.directory}/${project.artifactId}-${project.version}.jar-->
-<!--                            </inputFile>-->
-<!--                            <srgIn>org.spigotmc:minecraft-server:${minecraft.version}-R0.1-SNAPSHOT:txt:maps-mojang</srgIn>-->
-<!--                            <reverse>true</reverse>-->
-<!--                            <remappedDependencies>org.spigotmc:spigot:${minecraft.version}-R0.1-SNAPSHOT:jar:remapped-mojang-->
-<!--                            </remappedDependencies>-->
-<!--                            <remappedArtifactAttached>true</remappedArtifactAttached>-->
-<!--                            <remappedClassifierName>remapped-obf</remappedClassifierName>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                    <execution>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>remap</goal>-->
-<!--                        </goals>-->
-<!--                        <id>remap-spigot</id>-->
-<!--                        <configuration>-->
-<!--                            <inputFile>-->
-<!--                                ${project.build.directory}/${project.artifactId}-${project.version}-remapped-obf.jar-->
-<!--                            </inputFile>-->
-<!--                            <srgIn>org.spigotmc:minecraft-server:${minecraft.version}-R0.1-SNAPSHOT:csrg:maps-spigot</srgIn>-->
-<!--                            <remappedDependencies>org.spigotmc:spigot:${minecraft.version}-R0.1-SNAPSHOT:jar:remapped-obf</remappedDependencies>-->
-
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
             <plugin>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <version>3.0.0</version>
@@ -171,6 +147,30 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.7</version>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.5.1</version>
+                <executions>
+                    <execution>
+                        <id>default-deploy</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <serverId>nexus</serverId>
+                    <nexusUrl>http://${NEXUS-HOST}/nexus/</nexusUrl>
+                    <skipStaging>true</skipStaging>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -179,13 +179,6 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>${minecraft.version}-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot</artifactId>
-            <version>${minecraft.version}-R0.1-SNAPSHOT</version>
-            <classifier>remapped-mojang</classifier>
             <scope>provided</scope>
         </dependency>
         <dependency>

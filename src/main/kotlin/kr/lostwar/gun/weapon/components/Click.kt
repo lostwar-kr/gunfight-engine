@@ -53,12 +53,12 @@ class Click(
             }
             onClick(clickType)
         },
-        /*
+
         WeaponPlayerEventListener(PlayerInteractAtEntityEvent::class.java) {
             if(player.gameMode == GameMode.SPECTATOR) return@WeaponPlayerEventListener
             onClick(ClickType.RIGHT)
         },
-        */
+
         WeaponPlayerEventListener(PlayerInteractEntityEvent::class.java) {
             if(player.gameMode == GameMode.SPECTATOR) return@WeaponPlayerEventListener
             onClick(ClickType.RIGHT)

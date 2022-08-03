@@ -8,9 +8,11 @@ import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
 import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.util.AnimationClip
+import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.localToWorld
+import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.toVectorString
 import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
@@ -34,9 +36,12 @@ class Shoot(
     val clickTicks: Int = getInt("clickTicks", parent?.clickTicks, 6)
     val adjustDirectionByShootPositionOffset: Boolean = getBoolean("adjustDirectionByShootPositionOffset", parent?.adjustDirectionByShootPositionOffset, true)
     val adjustDirectionThickness: Double = getDouble("adjustDirectionThickness", parent?.adjustDirectionThickness, 1.0)
-    val adjustDirectionRange: Double = getDouble("adjustDirectionRange", parent?.adjustDirectionRange, 100.0)
+    val adjustDirectionRange: Double = getDouble("adjustDirectionRange", parent?.adjustDirectionRange, 160.0)
     val shootPositionOffset: List<Vector> = getStringList("shootPositionOffset", parent?.shootPositionOffset?.map { it.toVectorString() })
         .mapNotNull { VectorUtil.fromVectorString(it) ?: GunEngine.logErrorNull("cannot parse offset vector: $it") }
+
+    val effectAtMuzzle: ParticleSet = getParticleSet("effect.muzzle", parent?.effectAtMuzzle)
+    val effectAtMuzzleOffset: Vector = getVector("effect.muzzleOffset", parent?.effectAtMuzzleOffset)
 
     private val onClick = WeaponPlayerEventListener(WeaponClickEvent::class.java) { event ->
         if(event.clickType != ClickType.RIGHT) {
@@ -108,10 +113,22 @@ class Shoot(
         val immutableRay = prepareEvent.ray
         val ray: Location = prepareEvent.ray
 
+
         val shootEvent = WeaponShootEvent(this, action, ray, prepareEvent.filter)
+        // 한 개면 그냥 이펙트 한 번만
+        if(shootPositionOffset.isEmpty() || shootPositionOffset.size == 1) {
+            val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(ray.direction))
+            effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player) }
+        }
+        val initialShootCount = weapon.shootCount
         for(i in 0 until shootCount) {
             if(shootPositionOffset.isNotEmpty()) {
                 nextShootPositionOffset(ray, immutableRay, prepareEvent.filter)
+                // 여러개면 총구당 한 번씩만
+                if(weapon.shootCount - initialShootCount <= shootPositionOffset.size) {
+                    val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(ray.direction))
+                    effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player) }
+                }
             }
             shootEvent.callEventOnHoldingWeapon()
         }
