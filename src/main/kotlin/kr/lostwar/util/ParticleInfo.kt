@@ -1,5 +1,6 @@
 package kr.lostwar.util
 
+import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.util.ColorUtil.getBukkitColor
 import kr.lostwar.util.math.VectorUtil.getBukkitVector
@@ -51,7 +52,7 @@ data class ParticleInfo(
         )
     }
     companion object {
-        private val path = GunEngine.directory + "particles/"
+        private val path = plugin.directory + "particles/"
         private val byKey = HashMap<String, ParticleInfo>()
         operator fun get(key: String) = byKey[key]
         fun load() {

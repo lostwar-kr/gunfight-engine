@@ -11,6 +11,7 @@ import kr.lostwar.util.DoubleRange
 import kr.lostwar.util.math.random
 import kr.lostwar.util.nms.PacketUtil.rotateCamera
 import org.bukkit.configuration.ConfigurationSection
+import kotlin.math.abs
 
 class Recoil(
     config: ConfigurationSection?,
@@ -34,6 +35,7 @@ class Recoil(
         val v = vertical.getRecoil(this)
         val h = horizontal.getRecoil(this)
         val player = player
+        if(abs(v) <= 0.0001 || abs(h) <= 0.0001) return@WeaponPlayerEventListener
         player.rotateCamera(h.toFloat(), -v.toFloat())
     }
 

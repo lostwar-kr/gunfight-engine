@@ -7,21 +7,23 @@ import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponHitscanShootEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.gun.weapon.event.WeaponShootEvent
+import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ParticleSet
-import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.dot
 import kr.lostwar.util.math.VectorUtil.localToWorld
 import kr.lostwar.util.math.VectorUtil.normalized
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.nms.NMSUtil
 import kr.lostwar.util.nms.NMSUtil.rayTraceBlocksPiercing
-import kr.lostwar.util.plus
+import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.event.Event
+import org.bukkit.util.BoundingBox
+import org.bukkit.util.RayTraceResult
 import org.bukkit.util.Vector
 import kotlin.math.max
 import kotlin.math.min
@@ -41,8 +43,8 @@ class Hitscan(
     val nearThickness: Double = getDouble("nearThickness", parent?.nearThickness, thickness)
     val nearThicknessRange: Double = getDouble("nearThicknessRange", parent?.nearThicknessRange, 0.0)
     val useHeadShot: Boolean = getBoolean("headShot.enable", parent?.useHeadShot, true)
-    val headShotCheckRadiusMultiplier: Double = getDouble("headShot.checkRadiusMultiplier", parent?.headShotCheckRadiusMultiplier, 1.0)
-    val headShotCheckDensity: Double = getDouble("headShot.checkDensity", parent?.headShotCheckDensity, 0.1)
+    val headShotVerticalMultiplier: Double = getDouble("headShot.verticalMultiplier", parent?.headShotVerticalMultiplier, 1.0)
+    val headShotHorizontalMultiplier: Double = getDouble("headShot.horizontalMultiplier", parent?.headShotHorizontalMultiplier, 1.0)
     val ignorePlayerGameMode: List<GameMode> = getStringList(
         "ignorePlayerGameMode",
         parent?.ignorePlayerGameMode?.map { it.toString() },
@@ -56,6 +58,14 @@ class Hitscan(
     val effectAsProjectileOffset: Vector = getVector("effect.projectileOffset", parent?.effectAsProjectileOffset)
 
     private fun calculateRangeModifier(distance: Double) = damageRangeModifier.pow(distance / rangeModifierConstant)
+
+    private class EntityHitResult(
+        val target: LivingEntity,
+        val distance: Double,
+        hitHeadResult: RayTraceResult?,
+    ) {
+        val isHeadShot = hitHeadResult != null
+    }
 
     private val onShoot = WeaponPlayerEventListener(WeaponShootEvent::class.java) { event ->
         val weapon = weapon ?: return@WeaponPlayerEventListener
@@ -118,25 +128,35 @@ class Hitscan(
             val boundingBox = target.boundingBox
             if(boundingBox.volume <= 0.0) return@mapNotNull null
             val hitbox = boundingBox.expand(getRadius(dot))
-            val hitResult = hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null
-            // DEBUG
-//            DrawUtil.drawFor(40, 10,
-//                boundingBox.getOutline(2),
-//                Particle.DustOptions(Color.ORANGE, 1f),
-//            )
-//            DrawUtil.drawFor(40, 10,
-//                hitbox.getOutline(2),
-//                Particle.DustOptions(Color.RED, 1f),
-//            )
+            // raytrace 실패 시 히트 안 했음
+            hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null
+            val hitHeadResult = if(useHeadShot) {
+                // 머갈통 히트박스
+                // xz는 그대로 가져가고, y축은 (높이 - 눈) * 2
+                val headX = (boundingBox.widthX/2.0) * headShotHorizontalMultiplier
+                val headZ = (boundingBox.widthZ/2.0) * headShotHorizontalMultiplier
+                val headY = (boundingBox.height - target.eyeHeight) * headShotVerticalMultiplier
+                val headHitbox = BoundingBox.of(target.eyeLocation, headX, headY, headZ)
+                // DEBUG
+//                DrawUtil.drawFor(40, 10,
+//                    headHitbox.getOutline(2),
+//                    Particle.DustOptions(Color.RED, 1f),
+//                )
+//                DrawUtil.drawFor(40, 10,
+//                    hitbox.getOutline(2),
+//                    Particle.DustOptions(Color.GREEN, 1f),
+//                )
+                headHitbox.rayTrace(rayOrigin, rayDirection, maximumRange)
+            }else null
 //            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")
-            target to (dot to hitResult)
-        }.sortedBy { it.second.first } // 거리 기준 정렬
+            EntityHitResult(target, dot, hitHeadResult)
+        }.sortedBy { it.distance } // 거리 기준 정렬
         val entitiesSize = entities.size
 //        GunEngine.log("hitted entity count: ${entitiesSize}")
 
 //        GunEngine.log("block raycast:")
         var currentEntityIndex = 0
-        var currentDistance = entities.firstOrNull()?.second?.first ?: 0.0
+        var currentDistance = entities.firstOrNull()?.distance ?: 0.0
         var isBlockPierced = false
         var resistanceFactor = 0.0 // 0.0 ~ 1.0, 1.0부터는 작동 안 함
         // 블록 raytrace
@@ -150,7 +170,8 @@ class Hitscan(
 //            GunEngine.log("- block onHit(${blockDistance}, ${blockHitResult})")
             // 블록 충돌 이전의 모든 엔티티 충돌 처리
             while(currentEntityIndex < entitiesSize && blockDistance > currentDistance) {
-                val target = entities[currentEntityIndex].first
+                val hitResult = entities[currentEntityIndex]
+                val target = hitResult.target
 
                 val rangeModifier = calculateRangeModifier(currentDistance)
 //                GunEngine.log("  * entity hit[${currentEntityIndex}](${target}, ${currentDistance}, ${rangeModifier})")
@@ -163,10 +184,7 @@ class Hitscan(
                     return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.STOP
                 }
 
-                val isHeadShot = useHeadShot && checkHeadShot(
-                    rayDirection, rayPosition, target,
-                    getRadius(currentDistance) * headShotCheckRadiusMultiplier, headShotCheckDensity
-                )
+                val isHeadShot = hitResult.isHeadShot
                 with(weapon.type.hit) {
                     val weaponHitEntityResult = hitEntity(target, location = rayPosition, isHeadShot = isHeadShot, isPiercing = isBlockPierced) { originalDamage ->
                         originalDamage * max(0.0, rangeModifier + resistanceFactor)
@@ -178,7 +196,7 @@ class Hitscan(
 
                 ++currentEntityIndex
                 currentDistance = if(currentEntityIndex < entitiesSize) {
-                    entities[currentEntityIndex].second.first
+                    entities[currentEntityIndex].distance
                 }else{
                     Double.MAX_VALUE
                 }

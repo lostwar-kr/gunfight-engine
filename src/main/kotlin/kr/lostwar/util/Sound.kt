@@ -1,6 +1,9 @@
 package kr.lostwar.util
 
 import kr.lostwar.GunfightEngine.Companion.plugin
+import kr.lostwar.gun.GunEngine
+import kr.lostwar.util.ExtraUtil.joinToString
+import kr.lostwar.util.ui.text.console
 import org.bukkit.Location
 import org.bukkit.Sound
 import org.bukkit.SoundCategory
@@ -53,6 +56,7 @@ class SoundInfo private constructor(
         volume: Float = this.volume,
         pitch: Float = this.pitch
     ) {
+//        console("play sound(${this}) to player(${player.name}) at ${location} with volume ${volume}, pitch ${pitch}")
         if(custom) {
             player.playSound(location, soundString, category, volume, pitch)
         }else {
@@ -66,25 +70,36 @@ class SoundInfo private constructor(
 
             return try {
                 val split = raw.split('-').map { it.trim() }
-                when(split.size) {
-                    4 -> SoundInfo(
-                            Sound.valueOf(split[0].uppercase()),
-                            SoundCategory.BLOCKS,
-                            split[1].toFloat(),
-                            split[2].toFloat(),
-                            split[3].toInt(),
-                        )
-                    5 -> SoundInfo(
-                            split[0],
-                            SoundCategory.BLOCKS,
-                            split[1].toFloat(),
-                            split[2].toFloat(),
-                            split[3].toInt(),
-                    )
-                    else -> def
+                if(split.isEmpty()) {
+                    throw Exception("cannot parse empty sound")
                 }
-            }catch (e: java.lang.Exception) {
-                plugin.logWarn("failed to parse sound: $raw")
+                val rawSound = split[0]
+                val soundEnum = try {
+                    Sound.valueOf(rawSound)
+                } catch (_: Exception) {
+                    if(!rawSound.contains('.')) {
+                        GunEngine.logWarn("${rawSound} seems to Enum Sound, but failed to find, used as named sound")
+                    }
+                    null
+                }
+                val volume = split.getOrNull(1)?.toFloat() ?: 1f
+                val pitch = split.getOrNull(2)?.toFloat() ?: 1f
+                val delay = split.getOrNull(3)?.toInt() ?: 0
+                if(soundEnum != null) {
+                    SoundInfo(
+                        soundEnum,
+                        SoundCategory.BLOCKS,
+                        volume, pitch, delay
+                    )
+                }else{
+                    SoundInfo(
+                        rawSound,
+                        SoundCategory.BLOCKS,
+                        volume, pitch, delay
+                    )
+                }
+            }catch (e: Exception) {
+                plugin.logWarn("failed to parse sound: $raw, $e")
                 def
             }
         }
@@ -102,33 +117,38 @@ class SoundInfo private constructor(
         hashCode = 31 * hashCode + if(custom) soundString.hashCode() else soundEnum.hashCode()
         return hashCode
     }
+
+    override fun toString(): String {
+        return if(custom) {
+            "${soundString}-${volume}-${pitch}"
+        }else{
+            "${soundEnum}-${volume}-${pitch}"
+        }
+    }
 }
 
 class SoundClip(
     val sounds: List<SoundInfo>
 ) : List<SoundInfo> by sounds {
-    private fun play(offset: Int = 0, playMethod: SoundInfo.() -> Unit): BukkitTask? {
-        if(isEmpty()) return null
-        val soundQueue = LinkedList<ArrayList<SoundInfo>>()
-
+    private val queue = LinkedList<ArrayList<SoundInfo>>().apply {
         var lastDelay = -1
-        var index = 0
-        for(sound in this.sortedBy { it.delay }) {
-            if(sound.delay < offset) continue
+        for(sound in sounds) {
             val list = if(lastDelay != sound.delay) {
-                ++index
                 lastDelay = sound.delay
                 val l = ArrayList<SoundInfo>()
-                soundQueue.addLast(l)
+                addLast(l)
                 l
             }else{
-                soundQueue.peekLast()
+                peekLast()
             }
             list.add(sound)
         }
-        if(soundQueue.isEmpty()) return null
+    }
+    private fun play(offset: Int = 0, playMethod: SoundInfo.() -> Unit): BukkitTask? {
+        if(isEmpty()) return null
+        if(queue.isEmpty()) return null
         return object : BukkitRunnable() {
-            val iterator = soundQueue.iterator()
+            val iterator = queue.iterator()
             var current = iterator.next()
             var currentDelay = current.first().delay
             var count = offset
@@ -161,7 +181,7 @@ class SoundClip(
             return parse(list)
         }
         fun parse(list: List<String>): SoundClip {
-            return SoundClip(list.mapNotNull { SoundInfo.parse(it) })
+            return SoundClip(list.mapNotNull { SoundInfo.parse(it) }.sortedBy { it.delay })
         }
     }
 
@@ -182,6 +202,10 @@ class SoundClip(
             hashCode = 31 * hashCode + sound.hashCode()
         }
         return hashCode
+    }
+
+    override fun toString(): String {
+        return sounds.joinToString()
     }
 
 }

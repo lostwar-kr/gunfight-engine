@@ -340,7 +340,7 @@ class CarEntity(
         upSpeed -= base.gravityFactor
         velocity = transform.forward.modifiedY(0.0).normalize().multiply(forwardSpeed)
         velocity.y = upSpeed - if(base.canVerticalMove) naturalDownSpeed else 0.0
-        console("naturalDownSpeed: ${naturalDownSpeed}, velocity.y: ${velocity.y}")
+//        console("naturalDownSpeed: ${naturalDownSpeed}, velocity.y: ${velocity.y}")
 
         if(base.floatOnWater) {
             floatBoat()
@@ -361,7 +361,7 @@ class CarEntity(
 //            console("car kinematic entity ${info.key} ticking ... [vc=${verticalCollision},hc=${horizontalCollision}]")
             // 바닥하고 충돌한 경우 (수직 변화가 있었고, 원래 의도한 velocity는 중력 감소였다면)
             if(verticalCollision && velocity.y < 0.0) {
-                console("- reset gravity by land on ground")
+//                console("- reset gravity by land on ground")
                 finalGravity = 0.0
                 velocity.y = 0.0
                 upSpeed = upSpeed.coerceAtLeast(0.0)
@@ -378,7 +378,7 @@ class CarEntity(
             // 중력으로 내려간 엔티티 중 가장 최댓값으로 설정
             // 즉, 바닥이 있어서 안 내려간 게 있으면 전부 내려가지 않음
             if(newVelocity.y <= 0 && newVelocity.y > finalGravity) {
-                console("- set greater gravity: ${newVelocity.y} (finalGravity: ${finalGravity})")
+//                console("- set greater gravity: ${newVelocity.y} (finalGravity: ${finalGravity})")
                 finalGravity = newVelocity.y
             }
 
@@ -405,7 +405,7 @@ class CarEntity(
                 entities.forEach { it.value.entity.setIsOnGround(false) }
             }
         }
-        console("final velocity: ${velocity} (finalStepUp: ${finalStepUp}, finalGravity: ${finalGravity})")
+//        console("final velocity: ${velocity} (finalStepUp: ${finalStepUp}, finalGravity: ${finalGravity})")
         transform.position.add(velocity)
         boatLastDeltaY = velocity.y
         for((_, entity) in kinematicEntities) {

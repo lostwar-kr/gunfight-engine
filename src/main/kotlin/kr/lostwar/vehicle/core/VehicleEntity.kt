@@ -12,12 +12,14 @@ import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
+import kr.lostwar.util.math.VectorUtil.modifiedY
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
-import kr.lostwar.util.math.VectorUtil.toYawPitch
 import kr.lostwar.util.math.clamp
+import kr.lostwar.util.math.toRadians
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -45,7 +47,6 @@ import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
 import org.spigotmc.event.entity.EntityDismountEvent
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 open class VehicleEntity<T : VehicleInfo>(
@@ -112,8 +113,10 @@ open class VehicleEntity<T : VehicleInfo>(
 
     val transform: VehicleTransform = run {
         val position = spawnLocation.toVector()
-        val (yaw, pitch) = spawnLocation.direction.toYawPitch()
-        VehicleTransform(position).apply { eulerRotation = Vector(0f, yaw, 0f) }
+        val direction = spawnLocation.direction.modifiedY(0.0).normalize()
+        VehicleTransform(position).apply {
+            forward = direction
+        }
     }
     val location: Location; get() = transform.position.toLocation(world)
 
@@ -483,7 +486,15 @@ open class VehicleEntity<T : VehicleInfo>(
             if(action != Action.LEFT_CLICK_AIR) return
             if(hand != EquipmentSlot.HAND) return
 
-            if(GunEngine.isEnable && player.weaponPlayer.weapon != null) return
+            if(GunEngine.isEnable){
+                // fixme 좌클릭 사용하는 무기인 경우 캔슬
+                // 임시 하드코딩
+                player.weaponPlayer.weapon?.let { weapon ->
+                    if(weapon.type.zoom != null) {
+                        return
+                    }
+                }
+            }
 
             val origin = player.eyeLocation
             val forward = origin.clone().add(origin.direction.multiply(1.5))
