@@ -42,6 +42,7 @@ class Hit(
 
     fun WeaponPlayer.hitEntity(
         victim: LivingEntity,
+        distance: Double,
         damage: Double = this@Hit.damage,
         damageSource: Entity? = null,
         location: Location? = null,
@@ -55,11 +56,11 @@ class Hit(
             victim,
             finalDamage,
             damageSource,
+            distance,
             location,
             isHeadShot,
             isPiercing
-        )
-            .callEventOnHoldingWeapon(true)
+        ).callEventOnHoldingWeapon(true)
         if(event.isCancelled) {
             return event.result
         }

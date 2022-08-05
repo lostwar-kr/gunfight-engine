@@ -11,6 +11,8 @@ import kr.lostwar.util.ui.text.consoleWarn
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfoList
+import kr.lostwar.vehicle.core.animation.VehicleModelAnimation
+import kr.lostwar.vehicle.core.animation.VehicleModelAnimation.Companion.getAnimation
 import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import org.bukkit.Location
 import org.bukkit.Sound
@@ -63,6 +65,15 @@ abstract class VehicleInfo(
                         null
                     }
             }
+    }!!
+
+    val animations: Map<String, VehicleModelAnimation> = get("animation", parent?.animations, emptyMap()) { parentKey ->
+        val section = getConfigurationSection(parentKey) ?: return@get null
+        val parent = this@VehicleInfo.parent
+        val parentAnimations = parent?.animations ?: emptyMap()
+        section.getKeys(false)
+            .mapNotNull { key -> section.getAnimation(this@VehicleInfo, key, parentAnimations[key]) }
+            .associateBy { it.event }
     }!!
 
     val health: Double = getDouble("entity.health", parent?.health, 100.0)

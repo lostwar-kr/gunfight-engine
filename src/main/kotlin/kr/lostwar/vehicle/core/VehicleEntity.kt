@@ -15,9 +15,11 @@ import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.modifiedY
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
+import kr.lostwar.util.math.VectorUtil.toLocationString
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.math.toRadians
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
+import kr.lostwar.util.nms.NMSUtil.setImpulse
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
 import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
@@ -60,6 +62,7 @@ open class VehicleEntity<T : VehicleInfo>(
             .filter { it.isKinematicEntity }
             .minOf { it.localPosition.y }
         spawnLocation.add(0.0, -kinematicBaseY, 0.0)
+        spawnLocation.pitch = 0f
     }
     val world = spawnLocation.world
     private var internalPrimaryEntity: ArmorStand? = null
@@ -113,7 +116,7 @@ open class VehicleEntity<T : VehicleInfo>(
 
     val transform: VehicleTransform = run {
         val position = spawnLocation.toVector()
-        val direction = spawnLocation.direction.modifiedY(0.0).normalize()
+        val direction = spawnLocation.direction
         VehicleTransform(position).apply {
             forward = direction
         }
@@ -127,8 +130,9 @@ open class VehicleEntity<T : VehicleInfo>(
         .toMutableMap()
         .also { map ->
             map.forEach { (key, entity) ->
-                val parentInfo = entity.info.parent ?: return@forEach
-                entity.parent = map[parentInfo.key]
+                entity.info.parent?.let { parentInfo -> entity.parent = map[parentInfo.key] } ?: run {
+                    entity.updateWorld()
+                }
             }
         }
     val kinematicEntities = modelEntities.filter { it.value.info.isKinematicEntity }.toMutableMap()
@@ -144,8 +148,9 @@ open class VehicleEntity<T : VehicleInfo>(
         .toMutableList()
         .also { list ->
             list.forEach { entity ->
-                val parentInfo = entity.info.parent ?: return@forEach
-                entity.parent = modelEntities[parentInfo.key]
+                entity.info.parent?.let { parentInfo -> entity.parent = modelEntities[parentInfo.key] } ?: run {
+                    entity.updateWorld()
+                }
             }
         }
     val driverSeat = seatEntities[0]
@@ -156,6 +161,7 @@ open class VehicleEntity<T : VehicleInfo>(
 
     protected open fun spawnModel(info: VehicleModelInfo): ArmorStand {
         val worldPosition = transform.transform(info, world)
+//        console("spawnModel(${info.key}) on ${worldPosition.toLocationString()}")
         return (world.spawnEntity(worldPosition, EntityType.ARMOR_STAND) as ArmorStand).apply {
             isSmall = info.isSmall
 
@@ -244,6 +250,7 @@ open class VehicleEntity<T : VehicleInfo>(
     }
     protected open fun updateChildEntities() {
         nonKinematicEntities.forEach { (key, entity) ->
+            entity.entity.setImpulse()
             entity.tick()
             val transform = entity.worldTransform
             val location = entity.worldLocation
@@ -265,6 +272,7 @@ open class VehicleEntity<T : VehicleInfo>(
             DrawUtil.drawPoints(entity.boundingBox.getOutline(4), aabbParticle)
         }
         seatEntities.forEach { entity ->
+            entity.entity.setImpulse()
             entity.tick()
             val transform = entity.worldTransform
             val info = entity.info
@@ -457,6 +465,15 @@ open class VehicleEntity<T : VehicleInfo>(
             return entity.exit()
         }
         return true
+    }
+
+    fun callAnimation(eventKey: String) {
+        val animation = base.animations[eventKey] ?: return
+//        console("calling animation ${eventKey}: (${animation.itemMap.entries.joinToString { it.key+"="+it.value }})")
+        for((key, item) in animation.itemMap) {
+            val model = modelEntities[key] ?: continue
+            model.item = item
+        }
     }
 
     companion object : Listener {

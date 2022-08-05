@@ -12,6 +12,7 @@ class WeaponHitEntityEvent(
     val victim: LivingEntity,
     var damage: Double,
     val damageSource: Entity?,
+    val distance: Double,
     val location: Location?,
     val isHeadShot: Boolean,
     val isPiercing: Boolean,

@@ -82,10 +82,12 @@ class VehicleTransform(
         get() = forwardDirection
         set(value) {
             val forward = value.normalized
-            val (yaw, pitch) = forward.toYawPitch()
-            rotation = Vector(pitch, yaw, 0f)
-            eulerAngleForPose = EulerAngle(pitch.toDouble(), 0.0, 0.0)
             forwardDirection = forward
+            val (yaw, pitch) = forward.toYawPitch()
+            // 다소 무지성하긴 한데 ... 마인크래프트 회전 좌표계는 yaw가 반대로 설정됨
+            // 가슴이웅장해진다...모장은진짜레전드게임사
+            rotation = Vector(pitch, -yaw, 0f)
+            eulerAngleForPose = EulerAngle(pitch.toDouble(), 0.0, 0.0)
             up = VectorUtil.UP
             right = forward.getCrossProduct(up)
         }

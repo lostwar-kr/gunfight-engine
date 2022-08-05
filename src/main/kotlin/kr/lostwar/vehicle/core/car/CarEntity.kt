@@ -1,7 +1,9 @@
 package kr.lostwar.vehicle.core.car
 
+import kr.lostwar.util.math.VectorUtil.getDisplayString
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.modifiedY
+import kr.lostwar.util.math.VectorUtil.toVectorString
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.math.lerp
 import kr.lostwar.util.nms.BoatNMSUtil
@@ -28,7 +30,11 @@ class CarEntity(
     decoration: Boolean = false,
 ) : VehicleEntity<CarInfo>(base, location, decoration) {
 
+    private var lastForwardSpeed = 0.0
+    private var lastUpSpeed = 0.0
     override fun onEarlyTick() {
+        lastForwardSpeed = forwardSpeed
+        lastUpSpeed = upSpeed
         input()
         updateRotation()
         move()
@@ -40,6 +46,7 @@ class CarEntity(
 
     override fun onLateTick() {
         engineSound()
+        callAnimationEvents()
     }
 
     private fun Double.square() = this * this
@@ -53,10 +60,26 @@ class CarEntity(
         }
     }
 
+    private fun callAnimationEvents() {
+        if(oldBoatState != BoatNMSUtil.BoatState.ON_LAND && boatState == BoatNMSUtil.BoatState.ON_LAND) {
+            callAnimation("onLand")
+        }
+        // 기존 속도가 총합 0이 아니었고, 어쨌든 지금 속도가 총합 0이 된 경우
+//        if((lastForwardSpeed != 0.0 || lastUpSpeed != 0.0) && forwardSpeed == 0.0 && upSpeed == 0.0 && boatState == BoatNMSUtil.BoatState.ON_LAND) {
+//            callAnimation("onStopWhileLand")
+//        }
+        
+        // 아예 멈춰있다가 위로든 앞으로든 일단 움직인 경우
+        if(lastForwardSpeed == 0.0 && lastUpSpeed == 0.0 && (forwardSpeed != 0.0 || upSpeed != 0.0)) {
+            callAnimation("onStartMove")
+        }
+    }
+
     private var forwardSpeed = 0.0
     private var upSpeed = 0.0
     private var naturalDownSpeed = 0.0
     private var steering = 0.0
+
 
     private fun input() {
         val driver = driverSeat.passenger?.vehiclePlayer
@@ -68,7 +91,17 @@ class CarEntity(
             }else if(steering < 0){
                 (steering + base.steerRecoverInRadian).coerceAtMost(0.0)
             }else 0.0
-            if(base.canVerticalMove) naturalDownSpeed = base.naturalDownMaxSpeed
+            if(base.canVerticalMove){
+                upSpeed = if(upSpeed > 0) {
+                    (upSpeed - base.upDeceleration).coerceAtLeast(0.0)
+                }
+                // 상승 감속
+                else if(upSpeed < 0) {
+                    (upSpeed + base.downDeceleration).coerceAtMost(0.0)
+                }
+                else 0.0
+                naturalDownSpeed = base.naturalDownMaxSpeed
+            }
         }else{
             if(base.canVerticalMove) {
                 // 상승
@@ -253,7 +286,7 @@ class CarEntity(
             boatWaterLevel = entity.boundingBox.maxY + 0.001
             return it
         }
-        val (waterLevel, isInWater) = entity.entity.getWaterLevel()
+        val (waterLevel, isInWater) = entity.entity.getWaterLevel(0.1)
         boatWaterLevel = waterLevel
         if(isInWater) {
             return BoatNMSUtil.BoatState.IN_WATER
@@ -273,9 +306,9 @@ class CarEntity(
 
         val y = entity.location.y
         var invFriction = 0.05
-        var gravity = velocity.y
+        var verticalMove = velocity.y
         var upwardMove = 0.0
-        if(oldBoatState == BoatNMSUtil.BoatState.IN_AIR
+        /* if(oldBoatState == BoatNMSUtil.BoatState.IN_AIR
             && boatState != BoatNMSUtil.BoatState.IN_AIR
             && boatState != BoatNMSUtil.BoatState.ON_LAND
         ) {
@@ -284,30 +317,32 @@ class CarEntity(
             val moveY = ((waterLevelAbove - info.hitbox.height) + 0.101 - y)
             transform.position.y = transform.position.y + moveY
             velocity.y = 0.0
+            naturalDownSpeed = 0.0
             boatLastDeltaY = 0.0
             boatState = BoatNMSUtil.BoatState.IN_WATER
-//            console("air to water =================")
-//            console("boatWaterLevel: ${y} + ${info.hitbox.height} = ${boatWaterLevel}")
-//            console("transform.position.y: (${waterLevelAbove} - ${info.hitbox.height} + 0.101) = ${transform.position.y}")
-        }else when(boatState) {
+            verticalMove = 0.0
+            console("air to water =================")
+            console("boatWaterLevel: ${y} + ${info.hitbox.height} = ${boatWaterLevel}")
+            console("transform.position.y: (${waterLevelAbove} - ${info.hitbox.height} + 0.101) = ${transform.position.y}")
+        }else */ when(boatState) {
             BoatNMSUtil.BoatState.IN_WATER -> {
-                gravity = -7.0E-4
                 upSpeed = upSpeed.coerceAtLeast(0.0)
                 naturalDownSpeed = 0.0
-                upwardMove = (boatWaterLevel - y)
+                verticalMove = upSpeed + naturalDownSpeed
+                upwardMove = (boatWaterLevel - y) * 0.06
                 invFriction = base.boatWaterFriction
             }
             BoatNMSUtil.BoatState.UNDER_FLOWING_WATER -> {
-                gravity = -7.0E-4
                 upSpeed = upSpeed.coerceAtLeast(0.0)
                 naturalDownSpeed = 0.0
+                verticalMove = upSpeed + naturalDownSpeed
                 upwardMove = 1.0
                 invFriction = 0.9
             }
             BoatNMSUtil.BoatState.UNDER_WATER -> {
-                gravity = -7.0E-4
                 upSpeed = upSpeed.coerceAtLeast(0.0)
                 naturalDownSpeed = 0.0
+                verticalMove = upSpeed + naturalDownSpeed
                 upwardMove = 1.0
                 invFriction = 0.45
             }
@@ -321,17 +356,17 @@ class CarEntity(
                 }
                 upSpeed = upSpeed.coerceAtLeast(0.0)
                 naturalDownSpeed = 0.0
+                verticalMove = upSpeed + naturalDownSpeed
             }
         }
 
         velocity.x *= invFriction
         velocity.z *= invFriction
-        velocity.y = gravity + upwardMove
-//        console("boatState: $boatState, gravity: $gravity, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
+        velocity.y = verticalMove + upwardMove
+//        console("boatState: $boatState, waterLevel: $boatWaterLevel, verticalMove: $verticalMove, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
     }
 
     private fun move() {
-        val lastForwardSpeed = forwardSpeed
         val entities = kinematicEntitiesSortedByZ.let {
             if(forwardSpeed >= 0) it
             else it.asReversed()
@@ -348,7 +383,9 @@ class CarEntity(
 
         var finalStepUp = 0.0
         var finalGravity = velocity.y
+//        console("start finalGravity: ${finalGravity}")
         var collision = false
+        var land = false
         for((_, entity) in entities) {
             // NMS 충돌 처리를 통해 바뀐 velocity 가져오기
             val newVelocity = entity.entity.tryCollideAndGetModifiedVelocity(velocity)
@@ -358,15 +395,17 @@ class CarEntity(
             val verticalCollision = abs(diff.y) > 0
             val horizontalCollision = xCollision || zCollision
 
-//            console("car kinematic entity ${info.key} ticking ... [vc=${verticalCollision},hc=${horizontalCollision}]")
+//            if(verticalCollision)
+//                console("&eold=${velocity.toVectorString()}&r, &anew=${newVelocity.toVectorString()}&r")
             // 바닥하고 충돌한 경우 (수직 변화가 있었고, 원래 의도한 velocity는 중력 감소였다면)
             if(verticalCollision && velocity.y < 0.0) {
 //                console("- reset gravity by land on ground")
-                finalGravity = 0.0
-                velocity.y = 0.0
+                finalGravity = newVelocity.y
+                velocity.y = newVelocity.y
                 upSpeed = upSpeed.coerceAtLeast(0.0)
                 naturalDownSpeed = 0.0
                 entities.forEach { it.value.entity.setIsOnGround(true) }
+                land = true
             }
 
             // 경사 올랐으면 모든 엔티티 중 최대 경사 오름으로 설정
@@ -401,7 +440,7 @@ class CarEntity(
             velocity.y = finalStepUp
         }else{
             velocity.y = finalGravity
-            if(finalGravity < 0) {
+            if(!land && finalGravity < 0) {
                 entities.forEach { it.value.entity.setIsOnGround(false) }
             }
         }

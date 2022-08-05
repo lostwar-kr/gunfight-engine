@@ -3,19 +3,16 @@ package kr.lostwar.vehicle.core
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.ExtraUtil.armorStandOffset
+import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.lerp
 import kr.lostwar.util.math.VectorUtil.minus
-import kr.lostwar.util.math.VectorUtil.plus
-import kr.lostwar.util.math.VectorUtil.unaryMinus
-import kr.lostwar.util.ui.text.console
 import kr.lostwar.util.ui.text.consoleWarn
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
 import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.EntityType
-import org.bukkit.entity.Player
 import org.bukkit.util.Vector
 
 open class ModelEntity(
@@ -24,11 +21,28 @@ open class ModelEntity(
     val vehicle: VehicleEntity<*>,
 ) : ArmorStand by entity {
     open var info: VehicleModelInfo = info
-        set(value) {
-            field = value
+        set(new) {
+            val old = field
+            field = new
 
+            item = info.item
+            if(old.type != new.type) {
+                entity.equipment.apply {
+                    setItem(old.type, null, true)
+                    setItem(new.type, item.toItemStack(), true)
+                }
+            }
             localTransform.position = info.localPosition
             offset = if(info.hitbox.isEmpty()) info.type.armorStandOffset else VectorUtil.ZERO
+        }
+    var item: ItemData = info.item
+        set(new) {
+            val old = field
+//            console("modelEntity ${info.key} changed item from ${field} to ${value}")
+            field = new
+            if(old != new) {
+                entity.equipment.setItem(info.type, new.toItemStack(), true)
+            }
         }
     var parent: ModelEntity? = null
         set(value) {
@@ -60,10 +74,6 @@ open class ModelEntity(
         get() = (worldTransform.position - worldTransform.applyRotation(offset))
             .toLocation(world)
             .setDirection(worldTransform.forward)
-
-    init {
-        updateWorld()
-    }
 
     open fun tick() {
         if(parent == null) updateWorld()
@@ -122,7 +132,7 @@ open class ModelEntity(
     }
 
 
-    private fun updateWorld() {
+    fun updateWorld() {
         parent
             ?. worldTransform?.localToWorld(localTransform, worldTransform, useOwnWorldRotation)
             ?: vehicle.transform.localToWorld(localTransform, worldTransform, useOwnWorldRotation)

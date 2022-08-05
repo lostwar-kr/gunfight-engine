@@ -15,6 +15,8 @@ import kr.lostwar.util.math.VectorUtil.normalized
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.nms.NMSUtil
 import kr.lostwar.util.nms.NMSUtil.rayTraceBlocksPiercing
+import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
+import kr.lostwar.vehicle.core.VehicleEntity.Companion.vehicleEntityIdOrNull
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
 import org.bukkit.configuration.ConfigurationSection
@@ -62,6 +64,7 @@ class Hitscan(
     private class EntityHitResult(
         val target: LivingEntity,
         val distance: Double,
+        val hitResult: RayTraceResult,
         hitHeadResult: RayTraceResult?,
     ) {
         val isHeadShot = hitHeadResult != null
@@ -129,8 +132,9 @@ class Hitscan(
             if(boundingBox.volume <= 0.0) return@mapNotNull null
             val hitbox = boundingBox.expand(getRadius(dot))
             // raytrace 실패 시 히트 안 했음
-            hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null
-            val hitHeadResult = if(useHeadShot) {
+            val hitResult = hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null
+            // fixme andoo 차량인 경우 헤드샷 판정 무시
+            val hitHeadResult = if(useHeadShot && target.vehicleEntityIdOrNull == null) {
                 // 머갈통 히트박스
                 // xz는 그대로 가져가고, y축은 (높이 - 눈) * 2
                 val headX = (boundingBox.widthX/2.0) * headShotHorizontalMultiplier
@@ -149,7 +153,7 @@ class Hitscan(
                 headHitbox.rayTrace(rayOrigin, rayDirection, maximumRange)
             }else null
 //            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")
-            EntityHitResult(target, dot, hitHeadResult)
+            EntityHitResult(target, dot, hitResult, hitHeadResult)
         }.sortedBy { it.distance } // 거리 기준 정렬
         val entitiesSize = entities.size
 //        GunEngine.log("hitted entity count: ${entitiesSize}")
@@ -186,7 +190,13 @@ class Hitscan(
 
                 val isHeadShot = hitResult.isHeadShot
                 with(weapon.type.hit) {
-                    val weaponHitEntityResult = hitEntity(target, location = rayPosition, isHeadShot = isHeadShot, isPiercing = isBlockPierced) { originalDamage ->
+                    val weaponHitEntityResult = hitEntity(
+                        victim = target,
+                        distance = hitResult.distance,
+                        location = hitResult.hitResult.hitPosition.toLocation(world),
+                        isHeadShot = isHeadShot,
+                        isPiercing = isBlockPierced
+                    ) { originalDamage ->
                         originalDamage * max(0.0, rangeModifier + resistanceFactor)
                     }
                     if(weaponHitEntityResult != WeaponHitEntityEvent.DamageResult.IGNORE) {
