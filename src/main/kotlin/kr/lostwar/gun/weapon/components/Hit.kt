@@ -1,6 +1,7 @@
 package kr.lostwar.gun.weapon.components
 
 import kr.lostwar.gun.GunEngine
+import kr.lostwar.gun.weapon.Constants
 import kr.lostwar.util.CustomMaterialSet
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayer
@@ -13,6 +14,7 @@ import kr.lostwar.util.block.BlockUtil
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.toLocationString
 import kr.lostwar.util.math.VectorUtil.toVectorString
+import kr.lostwar.util.nms.NMSUtil.damage
 import kr.lostwar.util.ui.text.console
 import org.bukkit.Location
 import org.bukkit.Material
@@ -20,6 +22,7 @@ import org.bukkit.block.Block
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Entity
 import org.bukkit.entity.LivingEntity
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.util.Vector
 
 class Hit(
@@ -68,7 +71,8 @@ class Hit(
         if(victim.health - damage <= 0) {
             victim.killer = player
         }
-        victim.damage(damage)
+        // using special cause
+        victim.damage(damage, Constants.weaponDamageCause)
         if(resetHitCooldown){
             victim.noDamageTicks = 0
         }

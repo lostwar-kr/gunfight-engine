@@ -322,7 +322,7 @@ open class VehicleEntity<T : VehicleInfo>(
         }
 
         val damage = VehicleEntityDamage(this, amount, cause, victim, damager, weapon)
-        VehicleEngine.log("damage registered: $damage")
+//        VehicleEngine.log("damage registered: $damage")
         damageList.add(damage)
     }
 
@@ -335,15 +335,15 @@ open class VehicleEntity<T : VehicleInfo>(
 
         if(damages.isNotEmpty()) {
             base.hitSound.playAt(location)
-            VehicleEngine.log("damage process:")
+//            VehicleEngine.log("damage process:")
         }
         for(damage in damages) {
-            VehicleEngine.log("- $damage : ${primaryEntity.health - damage.amount}/${primaryEntity.maxHealth}")
+//            VehicleEngine.log("- $damage : ${primaryEntity.health - damage.amount}/${primaryEntity.maxHealth}")
             val event = VehicleEntityDamageEvent(this, damage, primaryEntity.health - damage.amount <= 0)
             if(event.callEvent()){
                 val newHealth = primaryEntity.health - event.damageInfo.amount
                 if(newHealth <= 0) {
-                    VehicleEngine.log("! death")
+//                    VehicleEngine.log("! death")
                     death(event)
                     break
                 }
@@ -557,15 +557,16 @@ open class VehicleEntity<T : VehicleInfo>(
             }
         }
 
-        @EventHandler
+        @EventHandler(priority = EventPriority.LOWEST)
         fun EntityDamageEvent.onEntityDamage() {
+            if(cause == kr.lostwar.gun.weapon.Constants.weaponDamageCause) return
             if(entityType != EntityType.ARMOR_STAND) return
             val entity = entity as ArmorStand
             val vehicle = entity.asVehicleEntityOrNull ?: return
             isCancelled = true
             vehicle.damage(damage, cause, entity)
         }
-        @EventHandler
+        @EventHandler(priority = EventPriority.LOWEST)
         fun EntityDamageByEntityEvent.onEntityDamageByEntity() {
             if(entityType != EntityType.ARMOR_STAND) return
             val entity = entity as ArmorStand
@@ -573,7 +574,7 @@ open class VehicleEntity<T : VehicleInfo>(
             isCancelled = true
             vehicle.damage(damage, cause, entity, damager)
         }
-        @EventHandler
+        @EventHandler(priority = EventPriority.LOWEST)
         fun WeaponHitEntityEvent.onEntityDamageByWeapon() {
             if(victim.type != EntityType.ARMOR_STAND) return
             val entity = victim as ArmorStand
