@@ -27,6 +27,9 @@ abstract class Engine(val name: String) {
             return
         }else{
             onLoad(reload)
+            if(reload) {
+                EngineReloadEvent(this).callEvent()
+            }
             if(!reload || !oldEnable) {
                 listeners.forEach { Bukkit.getPluginManager().registerEvents(it, plugin) }
             }
