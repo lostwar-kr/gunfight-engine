@@ -4,6 +4,7 @@ import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.onShootPrepare
+import kr.lostwar.vehicle.event.VehicleEnterEvent
 import kr.lostwar.vehicle.event.VehicleExitEvent
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
@@ -51,6 +52,7 @@ class SeatEntity(
         passenger = player
         entity.addPassenger(player)
         vehiclePlayer.isReseating = false
+        VehicleEnterEvent(vehicle, player, this).callEvent()
         return true
     }
 

@@ -12,22 +12,20 @@ import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
-import kr.lostwar.util.math.VectorUtil.modifiedY
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
-import kr.lostwar.util.math.VectorUtil.toLocationString
 import kr.lostwar.util.math.clamp
-import kr.lostwar.util.math.toRadians
+import kr.lostwar.util.nms.NMSUtil.isHardCollides
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
+import kr.lostwar.util.nms.NMSUtil.setHardCollides
 import kr.lostwar.util.nms.NMSUtil.setImpulse
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
+import kr.lostwar.util.nms.UnsafeNMSUtil.setCollidePredicate
 import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
-import kr.lostwar.vehicle.event.VehicleEntityDamageEvent
-import kr.lostwar.vehicle.event.VehicleExplodeDamageEvent
-import kr.lostwar.vehicle.event.VehiclePreExitEvent
+import kr.lostwar.vehicle.event.*
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
 import org.bukkit.entity.ArmorStand
@@ -50,6 +48,7 @@ import org.bukkit.util.Vector
 import org.spigotmc.event.entity.EntityDismountEvent
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 open class VehicleEntity<T : VehicleInfo>(
     base: T,
@@ -125,6 +124,7 @@ open class VehicleEntity<T : VehicleInfo>(
 
     var velocity: Vector = Vector()
 
+    protected val modelEntitiesIdSet = TreeSet<Int>()
     val modelEntities = base.models
         .mapValues { ModelEntity(it.value, spawnModel(it.value), this) }
         .toMutableMap()
@@ -154,6 +154,7 @@ open class VehicleEntity<T : VehicleInfo>(
             }
         }
     val driverSeat = seatEntities[0]
+    var lastDriver: Player? = null; private set
     fun isRiding(entity: Entity?): Boolean {
         if(entity == null) return false
         return seatEntities.any { it.passenger?.entityId == entity.entityId }
@@ -163,6 +164,7 @@ open class VehicleEntity<T : VehicleInfo>(
         val worldPosition = transform.transform(info, world)
 //        console("spawnModel(${info.key}) on ${worldPosition.toLocationString()}")
         return (world.spawnEntity(worldPosition, EntityType.ARMOR_STAND) as ArmorStand).apply {
+            modelEntitiesIdSet.add(entityId)
             isSmall = info.isSmall
 
             isInvisible = !isDebugging
@@ -174,7 +176,21 @@ open class VehicleEntity<T : VehicleInfo>(
 //                console("info ${info.key} is kinematic")
                 maxHealth = base.health
                 health = base.health
+                setHardCollides(true)
+                setCollidePredicate { _, other ->
+                    // 같은 차량 엔티티끼리는 상관 없음
+                    if(other.entityId in modelEntitiesIdSet)
+                        return@setCollidePredicate false
+                    // 같은 차량은 아닌데 아무튼 차량 엔티티일 경우?
+                    // 개같이 꼴아박기
+                    if(other.vehicleEntityIdOrNull != null) {
+                        return@setCollidePredicate true
+                    }
+                    // 그 외의 경우에는 엔티티를 통한 hard collision은 비활성화
+                    false
+                }
             }
+//            console("info ${info.key} hardCollides: ${isHardCollides()}")
 //            console("info ${info.key} hitbox size: ${info.hitbox}")
             info.hitbox.apply(this)
             if(info.type == EquipmentSlot.HAND || info.type == EquipmentSlot.OFF_HAND) {
@@ -203,6 +219,10 @@ open class VehicleEntity<T : VehicleInfo>(
     private fun earlyTick() {
         if(decoration) return
         if(isDead) return
+        val driver = driverSeat.passenger
+        if(driver != null && driver != lastDriver) {
+            lastDriver = driver
+        }
         onEarlyTick()
         updateChildEntities()
     }
@@ -408,6 +428,9 @@ open class VehicleEntity<T : VehicleInfo>(
             }
         }
 
+        val deathEvent = VehicleEntityDeathEvent(this, damageEvent)
+        deathEvent.callEvent()
+
         modelEntities.values.forEach { it.remove() }
         seatEntities.forEach { it.remove() }
 
@@ -424,9 +447,9 @@ open class VehicleEntity<T : VehicleInfo>(
             }
             return this
         }
-
+        val rideEvent = VehiclePreEnterEvent(this, player).also { it.callEvent() }
         if(!forced) {
-            if(decoration || isDead || player.gameMode == GameMode.SPECTATOR) return -1
+            if(rideEvent.isCancelled || decoration || isDead || player.gameMode == GameMode.SPECTATOR) return -1
         }
         val oldRiding = player.vehicle
         // 같은 차량 내에서, 좌석 변경 시도
