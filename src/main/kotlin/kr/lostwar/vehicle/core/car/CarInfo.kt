@@ -8,6 +8,7 @@ import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleInfo
 import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.util.Vector
 
 open class CarInfo(
     key: String,
@@ -69,6 +70,13 @@ open class CarInfo(
     val naturalDownDeceleration: Double = getDouble("car.engine.naturalDown.deceleration", parent?.naturalDownDeceleration, if(canVerticalMove) 0.02 else 0.0)
     val naturalDownMaxSpeed: Double = getDouble("car.engine.naturalDown.maxSpeed", parent?.naturalDownMaxSpeed, if(canVerticalMove) 0.2 else 0.0)
 
+    val pushHitboxInflateAmount: Double = getDouble("push.hitboxInflateAmount", parent?.pushHitboxInflateAmount, 0.0)
+    val pushForceMultiplier: Vector = getVector("push.forceMultiplier", parent?.pushForceMultiplier, Vector(1, 1, 1))
+    val pushDamage: Double = getDouble("push.damage", parent?.pushDamage, 0.0)
+    val pushSound: SoundClip = getSoundClip("push.sound", parent?.pushSound)
+    val pushNoDamageTicks: Int = getInt("push.noDamageTicks", parent?.pushNoDamageTicks, 10)
+    val pushMinimumSpeed: Double = getDouble("push.minimumSpeed", parent?.pushMinimumSpeed, 0.01)
+    val pushDecelerationPercentage: Double = getDouble("push.decelerationPercentage", parent?.pushDecelerationPercentage, 0.05)
     override fun spawn(location: Location, decoration: Boolean) = CarEntity(this, location, decoration)
 
 }

@@ -3,10 +3,11 @@ package kr.lostwar.util
 import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponPlayer
-import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.nms.PacketUtil.sendEquipmentSelf
+import kr.lostwar.util.ui.text.console
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Player
@@ -50,14 +51,28 @@ data class AnimationFrame(
 
     }
 
-    fun play(player: Player, weaponType: WeaponType): Material? {
+    fun play(weaponPlayer: WeaponPlayer, weaponType: WeaponType): Material? {
         if(item == null) return null
+        val player = weaponPlayer.player
 //        console("play animation ${this}")
         if(cooldown != null) {
             player.setCooldown(item.material, cooldown)
         }
-        player.sendEquipmentSelf(weaponType.item.itemStack.materialAndData(item), slot)
+        val itemStack = weaponType.item.itemStack.materialAndData(item)
+        player.sendEquipmentSelf(itemStack, slot)
+        weaponPlayer.lastAnimationFrame = this
         return item.material
+    }
+
+    fun recover(weaponPlayer: WeaponPlayer, weaponType: WeaponType) {
+        console("recovering animation ${this} ...")
+        if(item == null) return
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            val player = weaponPlayer.player
+            console("send $item")
+            val itemStack = weaponType.item.itemStack.materialAndData(item)
+            player.sendEquipmentSelf(itemStack, slot)
+        }, 2)
     }
 
     override fun toString(): String {
@@ -89,7 +104,7 @@ class AnimationClip(
         weaponPlayer.stopAnimation(!hasCooldownAnimation)
         if(offset > 0) playAt(weaponPlayer, player, weaponType, offset)
         if(frames.size == 1 && frames[0].delay == 0) {
-            frames[0].play(player, weaponType)?.let {
+            frames[0].play(weaponPlayer, weaponType)?.let {
                 weaponPlayer.registerCooldownMaterial(it)
             }
             return
@@ -120,7 +135,7 @@ class AnimationClip(
                     currentDelay = current.delay
                 }
                 if(currentDelay == count) {
-                    current.play(player, weaponType)?.let {
+                    current.play(weaponPlayer, weaponType)?.let {
                         weaponPlayer.registerCooldownMaterial(it)
                     }
                 }
@@ -137,7 +152,7 @@ class AnimationClip(
                 animation = frame
             }else break
         }
-        animation?.play(player, weaponType)?.let {
+        animation?.play(weaponPlayer, weaponType)?.let {
             weaponPlayer.registerCooldownMaterial(it)
         }
     }

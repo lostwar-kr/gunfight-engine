@@ -1,6 +1,7 @@
 package kr.lostwar.gun.weapon.event
 
 import kr.lostwar.gun.weapon.WeaponPlayer
+import kr.lostwar.gun.weapon.WeaponType
 import org.bukkit.Location
 import org.bukkit.entity.Entity
 import org.bukkit.entity.LivingEntity
@@ -11,6 +12,7 @@ class WeaponHitEntityEvent(
     player: WeaponPlayer,
     val victim: LivingEntity,
     var damage: Double,
+    val weaponType: WeaponType,
     val damageSource: Entity?,
     val distance: Double,
     val location: Location?,

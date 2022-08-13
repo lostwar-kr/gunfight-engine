@@ -1,9 +1,9 @@
 package kr.lostwar.gun.weapon
 
 import com.destroystokyo.paper.event.server.ServerTickEndEvent
-import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
+import kr.lostwar.util.AnimationFrame
 import kr.lostwar.util.nms.PacketUtil.resetCooldown
 import kr.lostwar.util.ui.ComponentUtil.darkGray
 import net.kyori.adventure.text.Component
@@ -42,6 +42,11 @@ class WeaponPlayer(
         cooldownMaterial.clear()
     }
     fun playAnimation(animationTask: BukkitTask?) = animationTask?.let { playingAnimations.add(it) }
+    var lastAnimationFrame: AnimationFrame? = null
+    fun recoverAnimation() {
+        val weaponType = weapon?.type ?: return
+        lastAnimationFrame?.recover(this, weaponType)
+    }
     fun playSound(soundTask: BukkitTask?) = soundTask?.let { playingSounds.add(it) }
 
 
@@ -49,6 +54,7 @@ class WeaponPlayer(
         for(task in playingAnimations) {
             if(!task.isCancelled) task.cancel()
         }
+        lastAnimationFrame = null
         playingAnimations.clear()
         if(resetCooldown)
             resetCooldownMaterial()

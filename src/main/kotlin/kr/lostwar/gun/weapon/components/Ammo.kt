@@ -179,8 +179,10 @@ class Ammo(
                 if(boltUseTacticalReloadAction && weapon.ammo > 0) LoadEventType.TACTICAL_RELOAD 
                 else LoadEventType.EMPTY_RELOAD
             // 누군가한테 인터셉트 당해버렸으면 (Zoom ...)
-            if(weapon.primaryAction != null) {
+            val action = weapon.primaryAction
+            if(action != null) {
 //                GunEngine.log("reload intercepted(${weapon.primaryAction}), queueing reload ...")
+                recoverAnimation() // Q키 눌러서 애니메이션이 초기화됨, 복구 필요
                 weapon.currentLoadEvent = type
             }else{
                 loadAction(

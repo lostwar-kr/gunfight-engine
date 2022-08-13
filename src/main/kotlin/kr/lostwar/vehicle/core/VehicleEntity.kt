@@ -15,6 +15,7 @@ import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.clamp
+import kr.lostwar.util.nms.NMSUtil.damage
 import kr.lostwar.util.nms.NMSUtil.isHardCollides
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setHardCollides
@@ -125,6 +126,10 @@ open class VehicleEntity<T : VehicleInfo>(
     var velocity: Vector = Vector()
 
     protected val modelEntitiesIdSet = TreeSet<Int>()
+    operator fun contains(entity: Entity?): Boolean {
+        if(entity == null) return false
+        return modelEntitiesIdSet.contains(entity.entityId)
+    }
     val modelEntities = base.models
         .mapValues { ModelEntity(it.value, spawnModel(it.value), this) }
         .toMutableMap()
@@ -423,7 +428,7 @@ open class VehicleEntity<T : VehicleInfo>(
                 val event = VehicleExplodeDamageEvent(this, entity, damage, wasPassenger, damageEvent)
                 if(event.callEvent()) {
 //                    console("  * event not cancelled, applied damage ${event.damage}")
-                    entity.damage(event.damage)
+                    entity.damage(event.damage, Constants.vehicleExplosionDamageCause)
                 }
             }
         }

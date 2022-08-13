@@ -2,11 +2,11 @@ package kr.lostwar.vehicle.core
 
 import kr.lostwar.util.Config
 import kr.lostwar.util.ConfigUtil
-import kr.lostwar.util.ConfigUtil.getFloatRange
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.SoundInfo
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
+import kr.lostwar.util.math.VectorUtil.getBukkitVector
 import kr.lostwar.util.ui.text.consoleWarn
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleModelInfo.Companion.getModelInfo
@@ -17,9 +17,10 @@ import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import org.bukkit.Location
 import org.bukkit.Sound
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.util.Vector
 import org.jetbrains.annotations.Contract
 import java.io.File
-import java.util.*
+import java.util.LinkedList
 import kotlin.collections.HashMap
 
 abstract class VehicleInfo(
@@ -88,6 +89,7 @@ abstract class VehicleInfo(
     val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)
     val collisionSound: SoundClip = getSoundClip("general.physics.collision.sound", parent?.collisionSound, SoundClip(listOf(SoundInfo(Sound.ITEM_SHIELD_BLOCK))))
 
+
     open val disableDriverExitVehicleByShiftKey: Boolean = getBoolean("general.extra.disableDriverExitVehicleByShiftKey", parent?.disableDriverExitVehicleByShiftKey, false)
 
     @Contract("_, _, !null -> !null")
@@ -122,6 +124,9 @@ abstract class VehicleInfo(
         return config.getDouble(key, parentDef ?: def)
     }
 
+    protected fun getVector(key: String, parentDef: Vector?, def: Vector = Vector()): Vector {
+        return get(key, parentDef, def) { k -> getBukkitVector(k) }!!
+    }
     @Contract("_, _, !null -> !null")
     protected fun getItemData(key: String, parentDef: ItemData?, def: ItemData? = null): ItemData? {
         return get(key, parentDef, def) { k -> getItemData(k, null) }

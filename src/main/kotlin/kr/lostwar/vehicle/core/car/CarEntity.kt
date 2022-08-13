@@ -1,26 +1,30 @@
 package kr.lostwar.vehicle.core.car
 
-import kr.lostwar.util.math.VectorUtil.getDisplayString
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.modifiedY
-import kr.lostwar.util.math.VectorUtil.toVectorString
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.math.lerp
 import kr.lostwar.util.nms.BoatNMSUtil
 import kr.lostwar.util.nms.BoatNMSUtil.getGroundFriction
 import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevel
-import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevelAbove
 import kr.lostwar.util.nms.BoatNMSUtil.isUnderWater
+import kr.lostwar.util.nms.NMSUtil.damage
 import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
-import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.Constants
 import kr.lostwar.vehicle.core.VehicleEntity
 import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerPitch
 import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerRoll
+import kr.lostwar.vehicle.event.VehiclePushEntityEvent
+import org.bukkit.GameMode
 import org.bukkit.Location
+import org.bukkit.entity.Damageable
+import org.bukkit.entity.EntityType
+import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.util.Vector
 import kotlin.math.abs
 
@@ -42,6 +46,52 @@ class CarEntity(
 
     override fun onTick() {
         super.onTick()
+        pushEntities()
+    }
+    private fun pushEntities() {
+        val speed = abs(forwardSpeed)
+        if(speed < base.pushMinimumSpeed) {
+            return
+        }
+        val speedMultiplier = speed / base.maxSpeed
+        val damage = base.pushDamage * speedMultiplier
+        if(damage <= 0) return
+        val entities = kinematicEntitiesSortedByZ.flatMap { (_, kinematic) ->
+            val checkHitbox = kinematic.boundingBox.expand(base.pushHitboxInflateAmount)
+            world.getNearbyEntities(checkHitbox) { entity ->
+                // 같은 차량인 경우 스킵
+                if(contains(entity) || contains(entity.vehicle)) return@getNearbyEntities false
+                // 차량이면 아무튼 스킵
+                if(entity.vehicleEntityIdOrNull != null) return@getNearbyEntities false
+                // 플레이어 게임모드 스킵
+                if(entity.type == EntityType.PLAYER) {
+                    val player = entity as Player
+                    if(player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) {
+                        return@getNearbyEntities false
+                    }
+                }
+                // LivingEntity 아니면 스킵
+                if(entity !is LivingEntity) return@getNearbyEntities false
+                return@getNearbyEntities true
+            }.map { it as LivingEntity to kinematic }
+        }.distinctBy { it.first.entityId }
+        for((entity, kinematic) in entities) {
+            if(entity.noDamageTicks > 0) continue
+            val event = VehiclePushEntityEvent(this, entity, damage).also { it.callEvent() }
+            if(event.isCancelled) continue
+            val direction = entity.location.toVector()
+                .subtract(kinematic.worldRawPosition)
+                .add(transform.forward)
+                .multiply(speedMultiplier)
+                .multiply(base.pushForceMultiplier)
+            entity.velocity = direction
+            entity.damage(event.damage, Constants.collisionDamageCause)
+            base.pushSound.playAt(entity.location)
+            entity.noDamageTicks = base.pushNoDamageTicks
+        }
+        if(entities.isNotEmpty()) {
+            forwardSpeed -= forwardSpeed * base.pushDecelerationPercentage
+        }
     }
 
     override fun onLateTick() {

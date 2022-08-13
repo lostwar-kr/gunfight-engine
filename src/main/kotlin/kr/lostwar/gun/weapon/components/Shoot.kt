@@ -40,6 +40,8 @@ class Shoot(
     val shootPositionOffset: List<Vector> = getStringList("shootPositionOffset", parent?.shootPositionOffset?.map { it.toVectorString() })
         .mapNotNull { VectorUtil.fromVectorString(it) ?: GunEngine.logErrorNull("cannot parse offset vector: $it") }
 
+    val takeItemOnShoot: Boolean = getBoolean("takeItemOnShoot", parent?.takeItemOnShoot, false)
+
     val effectAtMuzzle: ParticleSet = getParticleSet("effect.muzzle", parent?.effectAtMuzzle)
     val effectAtMuzzleOffset: Vector = getVector("effect.muzzleOffset", parent?.effectAtMuzzleOffset)
 
@@ -117,8 +119,9 @@ class Shoot(
         val shootEvent = WeaponShootEvent(this, action, ray, prepareEvent.filter)
         // 한 개면 그냥 이펙트 한 번만
         if(shootPositionOffset.isEmpty() || shootPositionOffset.size == 1) {
-            val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(ray.direction))
-            effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player) }
+            val direction = ray.direction
+            val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(direction))
+            effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player, offset = it.offset.localToWorld(direction)) }
         }
         val initialShootCount = weapon.shootCount
         for(i in 0 until shootCount) {
@@ -126,11 +129,17 @@ class Shoot(
                 nextShootPositionOffset(ray, immutableRay, prepareEvent.filter)
                 // 여러개면 총구당 한 번씩만
                 if(weapon.shootCount - initialShootCount <= shootPositionOffset.size) {
-                    val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(ray.direction))
-                    effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player) }
+                    val direction = ray.direction
+                    val muzzleEffectPosition = ray.plus(effectAtMuzzleOffset.localToWorld(direction))
+                    effectAtMuzzle.executeEach { it.spawnAt(muzzleEffectPosition, source = player, offset = it.offset.localToWorld(direction)) }
                 }
             }
             shootEvent.callEventOnHoldingWeapon()
+        }
+
+        if(takeItemOnShoot) {
+            val item = player.inventory.itemInMainHand
+            item.amount -= 1
         }
     }
 

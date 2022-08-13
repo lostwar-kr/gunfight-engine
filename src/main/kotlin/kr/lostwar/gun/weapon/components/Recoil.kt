@@ -35,7 +35,7 @@ class Recoil(
         val v = vertical.getRecoil(this)
         val h = horizontal.getRecoil(this)
         val player = player
-        if(abs(v) <= 0.0001 || abs(h) <= 0.0001) return@WeaponPlayerEventListener
+        if(abs(v) <= 0.0001 && abs(h) <= 0.0001) return@WeaponPlayerEventListener
         player.rotateCamera(h.toFloat(), -v.toFloat())
     }
 

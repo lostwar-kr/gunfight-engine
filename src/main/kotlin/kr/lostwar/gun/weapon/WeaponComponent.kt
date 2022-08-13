@@ -29,12 +29,14 @@ abstract class WeaponComponent(
             Burst::class.java,
             SelectorLever::class.java,
             Click::class.java,
+            Explosion::class.java,
             Hit::class.java,
             Spread::class.java,
             Shoot::class.java,
             Hitscan::class.java,
             Zoom::class.java,
             Recoil::class.java,
+            Grenade::class.java,
         )
         fun register(clazz: Class<out WeaponComponent>) {
             components.add(clazz)

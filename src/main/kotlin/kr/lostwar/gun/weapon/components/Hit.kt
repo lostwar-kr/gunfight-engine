@@ -8,7 +8,10 @@ import kr.lostwar.gun.weapon.WeaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.components.HitBlock.Companion.getResult
 import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
+import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
+import kr.lostwar.util.ParticleInfo.Companion.getParticleInfo
+import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.SoundClip
 import kr.lostwar.util.block.BlockUtil
 import kr.lostwar.util.math.VectorUtil
@@ -55,15 +58,22 @@ class Hit(
     ): WeaponHitEntityEvent.DamageResult {
         val originalDamage = (if(isHeadShot) damage * headShotDamageMultiply else damage) + (if(isHeadShot) headShotDamageAdd else 0.0)
         val finalDamage = damageModifier(originalDamage)
+        val type = this@Hit.weapon
         val event = WeaponHitEntityEvent(this,
             victim,
             finalDamage,
+            type,
             damageSource,
             distance,
             location,
             isHeadShot,
-            isPiercing
-        ).callEventOnHoldingWeapon(true)
+            isPiercing,
+        )
+        if(weapon?.type == type) {
+            event.callEventOnHoldingWeapon(true)
+        }else{
+            event.callEvent(type, true)
+        }
         if(event.isCancelled) {
             return event.result
         }
@@ -112,7 +122,7 @@ class Hit(
 
     fun WeaponPlayer.hitBlock(location: Location, block: Block, hitNormal: Vector): HitBlock {
         val type = block.type
-        var isEmptySpace: Boolean? = null
+//        var isEmptySpace: Boolean? = null
 //        console("hitBlock(${location.toVectorString()}, ${block.type})")
         for(interaction in HitBlockInteraction.registeredInteraction) {
             val inputResult = interactionMap[interaction] ?: interaction.defaultResult
@@ -120,6 +130,7 @@ class Hit(
             if(!inputResult.contains(type)) {
                 continue
             }
+            /*
             // emptySpace 연산은 한 번만 하도록
             if(inputResult.checkIsEmptySpace) {
                 if(isEmptySpace == null) {
@@ -129,35 +140,38 @@ class Hit(
                     continue
                 }
             }
+            */
 //            console("! hit ${interaction}")
-            val outputResult = interaction.onHit(this, this@Hit, inputResult, block, hitNormal)
+            val outputResult = interaction.onHit(this, this@Hit, location, inputResult, block, hitNormal)
             return outputResult
         }
 
         // 여기까지 올 일은 없겠지만 ...
         val fallbackInteraction = HitBlockInteraction.builtInCollideInteraction
         val fallbackResult = interactionMap[fallbackInteraction] ?: fallbackInteraction.defaultResult
-        return fallbackInteraction.onHit(this, this@Hit, fallbackResult, block, hitNormal)
+        return fallbackInteraction.onHit(this, this@Hit, location, fallbackResult, block, hitNormal)
     }
 
 }
 
 data class HitBlock(
     val types: Set<Material>?,
-    val checkIsEmptySpace: Boolean,
+//    val checkIsEmptySpace: Boolean,
     val blockRay: Boolean,
     val pierceSolid: Boolean,
     val resistance: Double,
+    val effect: ParticleSet,
 ) {
     operator fun contains(material: Material) = types?.contains(material) ?: true
     companion object {
         fun ConfigurationSection.getResult(key: String, default: HitBlock): HitBlock {
             val section = getConfigurationSection(key) ?: return default
 
-            val checkIsEmptySpace = section.getBoolean("checkIsEmptySpace", default.checkIsEmptySpace)
+//            val checkIsEmptySpace = section.getBoolean("checkIsEmptySpace", default.checkIsEmptySpace)
             val blockRay = section.getBoolean("blockRay", default.blockRay)
             val pierceSolid = section.getBoolean("pierceSolid", default.pierceSolid)
             val resistance = section.getDouble("resistance", default.resistance)
+            val effect = ParticleSet.getParticleSetOrNull(section, "effect") ?: default.effect
 
             val types =
                 if(!section.isList("types")) default.types
@@ -169,7 +183,14 @@ data class HitBlock(
                     set
                 }
 
-            return HitBlock(types, checkIsEmptySpace, blockRay, pierceSolid, resistance)
+            return HitBlock(
+                types,
+//                checkIsEmptySpace,
+                blockRay,
+                pierceSolid,
+                resistance,
+                effect
+            )
         }
 
         private fun MutableSet<Material>.apply(rawType: String, default: HitBlock) {
@@ -202,21 +223,22 @@ class HitBlockInteraction(
     val defaultResult: HitBlock,
     val onHit: WeaponPlayer.(
         hitBlock: Hit,
+        location: Location,
         result: HitBlock,
         block: Block,
         hitNormal: Vector
-    ) -> HitBlock = { _, result, _, _ -> result }
+    ) -> HitBlock = { _, _, result, _, _ -> result }
 ) {
 
     companion object {
         val builtInCollideInteraction = HitBlockInteraction("collide", HitBlock(
             null,
             true,
-            true,
             false,
             1.0,
-        )) { hitBlock, result, block, hitNormal ->
-
+            ParticleSet.emptySet,
+        )) { hitBlock, location, result, block, hitNormal ->
+            result.effect.forEach { it.spawnAt(location, offset = hitNormal) }
             result
         }
         private val interactions = mutableListOf<HitBlockInteraction>(
@@ -224,26 +246,26 @@ class HitBlockInteraction(
                 CustomMaterialSet.completelyPassable,
                 false,
                 false,
-                false,
-                0.0
+                0.0,
+                ParticleSet.emptySet,
             )),
             HitBlockInteraction("glass", HitBlock(
                 CustomMaterialSet.glasses,
                 false,
                 false,
-                false,
-                0.0
-            )) { hitBlock, result, block, hitNormal ->
+                0.0,
+                ParticleSet.emptySet,
+            )) { hitBlock, location, result, block, hitNormal ->
                 block.breakNaturally()
                 result
             },
             HitBlockInteraction("pierce", HitBlock(
                 CustomMaterialSet.passable,
-                true,
                 false,
                 true,
-                0.5
-            )) { hitBlock, result, block, hitNormal ->
+                0.5,
+                ParticleSet.emptySet,
+            )) { hitBlock, location, result, block, hitNormal ->
                 result
             },
         )

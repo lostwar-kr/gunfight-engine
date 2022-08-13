@@ -7,4 +7,5 @@ object Constants {
     val vehicleEntityKey = "${VehicleEngine.name}_ve"
 
     val collisionDamageCause = DamageCause.FLY_INTO_WALL
+    val vehicleExplosionDamageCause = DamageCause.DRAGON_BREATH
 }

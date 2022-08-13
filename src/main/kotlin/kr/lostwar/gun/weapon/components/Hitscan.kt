@@ -221,7 +221,11 @@ class Hitscan(
 //                block.boundingBox.getOutline(2),
 //                Particle.DustOptions(Color.BLUE, 1f),
 //            )
-            val result = with(weaponType.hit) { hitBlock(rayPosition, block, ray.direction.multiply(-1)) }
+            val result = with(weaponType.hit) { hitBlock(
+                blockHitResult.hitPosition.toLocation(world),
+                block,
+                blockHitResult.hitBlockFace?.direction ?: ray.direction.multiply(-1)
+            ) }
             if(result.blockRay) {
 //                GunEngine.log("! block hit: ${block}, ray stop")
                 return@rayTraceBlocksPiercing NMSUtil.RayTraceContinuation.STOP
