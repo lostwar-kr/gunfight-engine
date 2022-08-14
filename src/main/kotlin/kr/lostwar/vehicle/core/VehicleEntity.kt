@@ -10,13 +10,14 @@ import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
+import kr.lostwar.util.block.ChunkUtil
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
+import kr.lostwar.util.math.VectorUtil.toLocationString
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.damage
-import kr.lostwar.util.nms.NMSUtil.isHardCollides
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setHardCollides
 import kr.lostwar.util.nms.NMSUtil.setImpulse
@@ -26,6 +27,7 @@ import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
+import kr.lostwar.vehicle.core.SavedVehicleEntity.Companion.save
 import kr.lostwar.vehicle.event.*
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
@@ -42,6 +44,9 @@ import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemHeldEvent
+import org.bukkit.event.world.ChunkLoadEvent
+import org.bukkit.event.world.EntitiesLoadEvent
+import org.bukkit.event.world.EntitiesUnloadEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.util.EulerAngle
@@ -49,7 +54,6 @@ import org.bukkit.util.Vector
 import org.spigotmc.event.entity.EntityDismountEvent
 import java.util.*
 import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 
 open class VehicleEntity<T : VehicleInfo>(
     base: T,
@@ -75,6 +79,8 @@ open class VehicleEntity<T : VehicleInfo>(
             }
         }
     val primaryEntity: ArmorStand; get() = internalPrimaryEntity!!
+    var health: Double; get() = primaryEntity.health; set(value) { primaryEntity.health = value }
+    val maxHealth = base.health
     val uniqueId: UUID; get() = internalPrimaryEntity!!.uniqueId
 
     var base: T = base
@@ -170,6 +176,7 @@ open class VehicleEntity<T : VehicleInfo>(
 //        console("spawnModel(${info.key}) on ${worldPosition.toLocationString()}")
         return (world.spawnEntity(worldPosition, EntityType.ARMOR_STAND) as ArmorStand).apply {
             modelEntitiesIdSet.add(entityId)
+            isPersistent = false
             isSmall = info.isSmall
 
             isInvisible = !isDebugging
@@ -221,7 +228,15 @@ open class VehicleEntity<T : VehicleInfo>(
 
     private val aabbParticle = Particle.DustOptions(Color.WHITE, 0.5f)
     var isDead = false
+    protected fun isOnChunkLoaded(): Boolean {
+        val x = transform.position.x.toInt() shr 4
+        val z = transform.position.z.toInt() shr 4
+        return world.isChunkLoaded(x, z)
+    }
     private fun earlyTick() {
+        if(!isOnChunkLoaded()) {
+            return
+        }
         if(decoration) return
         if(isDead) return
         val driver = driverSeat.passenger
@@ -233,6 +248,9 @@ open class VehicleEntity<T : VehicleInfo>(
     }
     protected open fun onEarlyTick() {}
     private fun tick() {
+        if(!isOnChunkLoaded()) {
+            return
+        }
         if(decoration) return
         if(!isDead && (modelEntities.values.any { it.isDead } || seatEntities.any { it.isDead })) {
             death()
@@ -366,13 +384,13 @@ open class VehicleEntity<T : VehicleInfo>(
 //            VehicleEngine.log("- $damage : ${primaryEntity.health - damage.amount}/${primaryEntity.maxHealth}")
             val event = VehicleEntityDamageEvent(this, damage, primaryEntity.health - damage.amount <= 0)
             if(event.callEvent()){
-                val newHealth = primaryEntity.health - event.damageInfo.amount
+                val newHealth = health - event.damageInfo.amount
                 if(newHealth <= 0) {
 //                    VehicleEngine.log("! death")
                     death(event)
                     break
                 }
-                primaryEntity.health = newHealth.clamp(0.0  .. primaryEntity.maxHealth)
+                health = newHealth.clamp(0.0  .. maxHealth)
             }
         }
 
@@ -442,6 +460,28 @@ open class VehicleEntity<T : VehicleInfo>(
         modelEntities.clear()
         seatEntities.clear()
         damageList.clear()
+    }
+
+    protected open fun MutableMap<String, Any>.storeData() {}
+    open fun store(): SavedVehicleEntity {
+//        console("store to cache ${base.key}(${uniqueId})")
+        val data = save(this) {
+            storeData()
+        }
+
+        modelEntities.values.forEach { it.remove() }
+        seatEntities.forEach { it.remove() }
+
+        modelEntities.clear()
+        seatEntities.clear()
+        damageList.clear()
+        isDead = true
+        return data
+    }
+
+    open fun apply(data: SavedVehicleEntity): Boolean {
+//        console("recovered from cache ${base.key}(${uniqueId})")
+        return true
     }
 
     open fun ride(player: Player, forced: Boolean = false): Int {
@@ -632,6 +672,38 @@ open class VehicleEntity<T : VehicleInfo>(
             val vehicle = riding.asVehicleEntityOrNull ?: return
             val seat = vehicle.seatEntities.find { it.entityId == riding.entityId } ?: return
             seat.onShoot(this)
+        }
+        
+        // 청크 관련 로직
+        private val cachedVehicleStorage = HashMap<Long, MutableList<SavedVehicleEntity>>()
+        @EventHandler
+        fun EntitiesUnloadEvent.onDespawnByChunkUnload() {
+            val vehicles = hashSetOf<VehicleEntity<*>>()
+            for(entity in entities) {
+                if(entity.type != EntityType.ARMOR_STAND) continue
+                val vehicle = entity.asVehicleEntityOrNull ?: continue
+                vehicles.add(vehicle)
+            }
+            if(vehicles.isEmpty()) return
+//            console("EntitiesUnloadEvent called on next vehicles: [${chunk.x}, ${chunk.z}]")
+            val list = cachedVehicleStorage.getOrPut(chunk.chunkKey) { arrayListOf() }
+            for(vehicle in vehicles) {
+                list.add(vehicle.store())
+//                console(" - ${vehicle.base.key}(${vehicle.uniqueId}) at ${vehicle.location.toLocationString()}")
+            }
+        }
+
+        @EventHandler
+        fun EntitiesLoadEvent.onChunkEntitiesLoad() {
+            val key = chunk.chunkKey
+            val list = cachedVehicleStorage[key] ?: return
+
+            for(data in list) {
+                data.spawn()
+            }
+
+            list.clear()
+            cachedVehicleStorage.remove(key)
         }
     }
 

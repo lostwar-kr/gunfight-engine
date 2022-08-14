@@ -40,6 +40,7 @@ class ShootAction(
     lateinit var state: State; private set
     var shootCount = 0
     var delay = 0
+    private var lastDelay = delay
     var leftBurst: Int = 0
     var completed = false
     override fun onStart() {
@@ -88,27 +89,6 @@ class ShootAction(
             end()
             return
         }
-        weapon.type.ammo?.let { ammoComponent ->
-            if(weapon.ammo <= 0) {
-                if(state != State.EMPTY_AMMO_WAIT) {
-                    if(state == State.FULL_AUTO_PER_SHOT) {
-                        WeaponAnimationDetermineEvent.Type.FULL_AUTO_SHOOT_STOP
-                            .create(player, fullAuto!!.shootAnimationLoopStop)
-                            .callEventAndGetClip()
-                            .play(player, weapon.type)
-                    }
-                    state = State.EMPTY_AMMO_WAIT
-                    delay = ammoComponent.reloadEmptyAmmoDelay
-                }else{
-                    if(delay > 0){
-                        --delay
-                    }else{
-                        end()
-                    }
-                }
-                return
-            }
-        }
 
         if(clickingTicks > 0) {
             --clickingTicks
@@ -119,6 +99,26 @@ class ShootAction(
 
         --delay
         if(delay > 0) return
+        weapon.type.ammo?.let { ammoComponent ->
+            if(weapon.ammo <= 0) {
+                if(state != State.EMPTY_AMMO_WAIT && ammoComponent.reloadEmptyAmmoDelay > 0) {
+
+                    if(state == State.FULL_AUTO_PER_SHOT) {
+                        WeaponAnimationDetermineEvent.Type.FULL_AUTO_SHOOT_STOP
+                            .create(player, fullAuto!!.shootAnimationLoopStop)
+                            .callEventAndGetClip()
+                            .play(player, weapon.type)
+                    }
+
+
+                    state = State.EMPTY_AMMO_WAIT
+                    delay = ammoComponent.reloadEmptyAmmoDelay
+                }else{
+                    end()
+                }
+                return
+            }
+        }
         when(state) {
             State.SINGLE_WAIT_DELAY -> {
                 // 딱 끝나는 이번 틱에 누른 경우

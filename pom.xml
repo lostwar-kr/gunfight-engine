@@ -17,7 +17,7 @@
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>17</kotlin.compiler.jvmTarget>
         <kotlin.version>1.6.10</kotlin.version>
-        <minecraft.version>1.19.1</minecraft.version>
+        <minecraft.version>1.19.2</minecraft.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
 

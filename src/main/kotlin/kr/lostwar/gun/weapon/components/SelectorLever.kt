@@ -76,6 +76,7 @@ class SelectorLever(
 
     private val onSwap = WeaponPlayerEventListener(PlayerSwapHandItemsEvent::class.java) { event ->
         val weapon = this.weapon ?: return@WeaponPlayerEventListener
+        if(!weapon.type.selectorLever.useSelector) return@WeaponPlayerEventListener
         event.isCancelled = true
         if(weapon.primaryAction != null) return@WeaponPlayerEventListener
 
@@ -83,7 +84,8 @@ class SelectorLever(
         val newType = selectors[(selectors.indexOf(oldType) + 1) % selectors.size]
 
         weapon.selector = newType
-        leverSound.playToPlayer(player)
+        if(oldType != newType)
+            leverSound.playToPlayer(player)
     }
 
     override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
