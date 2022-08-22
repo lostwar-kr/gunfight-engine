@@ -4,18 +4,16 @@ import com.destroystokyo.paper.event.server.ServerTickEndEvent
 import com.destroystokyo.paper.event.server.ServerTickStartEvent
 import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
-import kr.lostwar.gun.weapon.Weapon
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
+import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
-import kr.lostwar.util.block.ChunkUtil
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
-import kr.lostwar.util.math.VectorUtil.toLocationString
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.damage
 import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
@@ -23,7 +21,6 @@ import kr.lostwar.util.nms.NMSUtil.setHardCollides
 import kr.lostwar.util.nms.NMSUtil.setImpulse
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
 import kr.lostwar.util.nms.UnsafeNMSUtil.setCollidePredicate
-import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
@@ -44,7 +41,6 @@ import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemHeldEvent
-import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.EntitiesLoadEvent
 import org.bukkit.event.world.EntitiesUnloadEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -170,6 +166,9 @@ open class VehicleEntity<T : VehicleInfo>(
         if(entity == null) return false
         return seatEntities.any { it.passenger?.entityId == entity.entityId }
     }
+    fun isEmpty(): Boolean {
+        return seatEntities.all { it.passenger == null }
+    }
 
     protected open fun spawnModel(info: VehicleModelInfo): ArmorStand {
         val worldPosition = transform.transform(info, world)
@@ -222,6 +221,16 @@ open class VehicleEntity<T : VehicleInfo>(
         }
     }
     var livingTicks = 0
+    var removeWhenAbandoned = base.abandonedRemoveTime > 0; private set
+    var abandonedRemoveTimeInTicks = base.abandonedRemoveTime
+        set(value) {
+            field = value
+            removeWhenAbandoned = value > 0
+            unusedTicks = 0
+        }
+    var unusedTicks = 0; private set
+
+    val neverUsed; get() = livingTicks == unusedTicks
     init {
         byUUID[uniqueId] = this
     }
@@ -260,7 +269,21 @@ open class VehicleEntity<T : VehicleInfo>(
         onTick()
         onLateTick()
         processDamage()
+
+        if(removeWhenAbandoned && !storeOnUnload) {
+            if(isEmpty()) {
+                ++unusedTicks
+                if(unusedTicks > abandonedRemoveTimeInTicks) {
+                    death(explosion = false)
+                    return
+                }
+            }else{
+                unusedTicks = 0
+            }
+        }
+
         ++livingTicks
+
     }
     protected open fun onTick() {
         if(isDebugging) {
@@ -345,7 +368,7 @@ open class VehicleEntity<T : VehicleInfo>(
     }
 
     private val damageList = mutableListOf<VehicleEntityDamage>()
-    fun damage(amount: Double, cause: DamageCause, victim: ArmorStand? = null, damager: Entity? = null, weapon: Weapon? = null) {
+    fun damage(amount: Double, cause: DamageCause, victim: ArmorStand? = null, damager: Entity? = null, weapon: WeaponType? = null) {
         if(decoration) return
         if(isDead) return
 
@@ -398,7 +421,7 @@ open class VehicleEntity<T : VehicleInfo>(
         damageList.clear()
     }
 
-    fun death(damageEvent: VehicleEntityDamageEvent? = null) {
+    fun death(damageEvent: VehicleEntityDamageEvent? = null, explosion: Boolean = true) {
         if(isDead) return
         isDead = true
 
@@ -409,7 +432,7 @@ open class VehicleEntity<T : VehicleInfo>(
         }
 
         val location = location
-        if(base.deathExplosionEnable && damageEvent?.damageInfo?.damager?.uniqueId != uniqueId) {
+        if(explosion && base.deathExplosionEnable && damageEvent?.damageInfo?.damager?.uniqueId != uniqueId) {
 //            console("explosion:")
             for(entity in location.getNearbyLivingEntities(base.deathExplosionRadius)) {
                 if(entity.type == EntityType.ARMOR_STAND && entity.vehicleEntityIdOrNull == uniqueId) {
@@ -462,6 +485,7 @@ open class VehicleEntity<T : VehicleInfo>(
         damageList.clear()
     }
 
+    var storeOnUnload = false
     protected open fun MutableMap<String, Any>.storeData() {}
     open fun store(): SavedVehicleEntity {
 //        console("store to cache ${base.key}(${uniqueId})")
@@ -648,7 +672,7 @@ open class VehicleEntity<T : VehicleInfo>(
             val entity = victim as ArmorStand
             val vehicle = entity.asVehicleEntityOrNull ?: return
             result = WeaponHitEntityEvent.DamageResult.IGNORE
-            vehicle.damage(damage, DamageCause.CUSTOM, entity, player.player, weapon)
+            vehicle.damage(damage, DamageCause.CUSTOM, entity, player.player, weaponType)
         }
 
         @EventHandler
@@ -688,7 +712,8 @@ open class VehicleEntity<T : VehicleInfo>(
 //            console("EntitiesUnloadEvent called on next vehicles: [${chunk.x}, ${chunk.z}]")
             val list = cachedVehicleStorage.getOrPut(chunk.chunkKey) { arrayListOf() }
             for(vehicle in vehicles) {
-                list.add(vehicle.store())
+                if(vehicle.storeOnUnload) list.add(vehicle.store())
+                else vehicle.death(explosion = false)
 //                console(" - ${vehicle.base.key}(${vehicle.uniqueId}) at ${vehicle.location.toLocationString()}")
             }
         }

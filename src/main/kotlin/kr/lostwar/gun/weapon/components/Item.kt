@@ -9,8 +9,11 @@ import kr.lostwar.util.item.ItemBuilder
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemUtil.applyItemMeta
 import kr.lostwar.util.item.ItemUtil.applyMeta
+import kr.lostwar.util.ui.ComponentUtil.asComponent
+import kr.lostwar.util.ui.ComponentUtil.asMiniMessage
 import kr.lostwar.util.ui.text.StringUtil.colored
 import kr.lostwar.util.ui.text.StringUtil.mapColored
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
@@ -39,23 +42,19 @@ class Item(
     val useCrossbowMotion: Boolean = getBoolean("useCrossbowMotion", parent?.useCrossbowMotion, false)
     val crossbowData: Int = getInt("crossbowData", itemData.data)
 
+    val displayNameInComponent = when(textType) {
+        TextType.MINI_MESSAGE -> displayName?.asMiniMessage
+        TextType.LEGACY_STRING -> displayName?.colored()?.asComponent
+    }
+
+    val loreInComponent = when(textType) {
+        TextType.MINI_MESSAGE -> lore.mapNotNull { MiniMessage.miniMessage().deserializeOrNull(it) }.takeIf { it.isNotEmpty() }
+        TextType.LEGACY_STRING -> lore.mapColored().map { it.asComponent }
+    } ?: emptyList()
 
     val itemStack: ItemBuilder; get() = ItemBuilder(itemData).applyItemMeta {
-        val displayName = this@Item.displayName
-        val lore = this@Item.lore
-        when(textType) {
-            TextType.MINI_MESSAGE -> {
-                val parser = MiniMessage.miniMessage()
-                displayName(parser.deserializeOrNull(displayName))
-                if(lore.isNotEmpty()) {
-                    lore(lore.mapNotNull { parser.deserializeOrNull(it) }.takeIf { it.isNotEmpty() })
-                }
-            }
-            TextType.LEGACY_STRING -> @Suppress("DEPRECATION") {
-                setDisplayName(displayName?.colored())
-                setLore(lore.mapColored())
-            }
-        }
+        displayName(displayNameInComponent)
+        lore(loreInComponent)
         isUnbreakable = true
         addItemFlags(*ItemFlag.values())
     }

@@ -6,5 +6,5 @@ import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 
 object Constants {
     val weaponContainerKey = NamespacedKey("gunfightengine", "fmj.weapon")
-    val weaponDamageCause = DamageCause.MELTING // used on snow golem
+    val weaponDamageCause = DamageCause.DRYOUT // used on water entities
 }

@@ -39,7 +39,7 @@ class Grenade(
             private var count = delay
             override fun run() {
                 if(count <= 0 || item.isDead) {
-                    weaponType.explosion?.apply { createExplosion(item.location) }
+                    this@Grenade.weapon.explosion?.apply { createExplosion(item.location) }
                     item.remove()
                     cancel()
                     return

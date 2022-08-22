@@ -89,7 +89,7 @@ abstract class VehicleInfo(
     val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)
     val collisionSound: SoundClip = getSoundClip("general.physics.collision.sound", parent?.collisionSound, SoundClip(listOf(SoundInfo(Sound.ITEM_SHIELD_BLOCK))))
 
-
+    val abandonedRemoveTime: Int = getInt("genera.extra.abandonedRemoveTime", parent?.abandonedRemoveTime, -1)
     open val disableDriverExitVehicleByShiftKey: Boolean = getBoolean("general.extra.disableDriverExitVehicleByShiftKey", parent?.disableDriverExitVehicleByShiftKey, false)
 
     @Contract("_, _, !null -> !null")

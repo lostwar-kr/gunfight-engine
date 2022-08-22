@@ -83,6 +83,7 @@ class Hit(
         }
         // using special cause
         victim.damage(damage, Constants.weaponDamageCause)
+//        victim.damage(damage)
         if(resetHitCooldown){
             victim.noDamageTicks = 0
         }
