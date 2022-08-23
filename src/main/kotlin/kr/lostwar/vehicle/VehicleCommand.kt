@@ -15,6 +15,10 @@ import org.bukkit.entity.Player
 
 object VehicleCommand : MultiCommand("andoo", "andoo", aliases = listOf("ad")) {
 
+    init {
+        permission = "andoo.command"
+    }
+
     private val debugCommand = object : OperatorSubCommand("debug") {
         override fun SubCommandExecuteData.execute() {
             VehicleEngine.isDebugging = !VehicleEngine.isDebugging

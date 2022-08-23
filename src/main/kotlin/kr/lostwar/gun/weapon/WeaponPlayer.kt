@@ -1,6 +1,7 @@
 package kr.lostwar.gun.weapon
 
 import com.destroystokyo.paper.event.server.ServerTickEndEvent
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.AnimationFrame
@@ -125,7 +126,11 @@ class WeaponPlayer(
     private fun tick() {
 //        updateCurrentWeapon()
         weapon?.tick()
-        player.sendActionBar(Component.text("weapon: ").append(weapon?.toDisplayComponent() ?: Component.text("not holding").darkGray()))
+        if(GunEngine.isDebugging) {
+            player.sendActionBar(Component.text("weapon: ")
+                .append(weapon?.toDisplayComponent() ?: Component.text("not holding").darkGray())
+            )
+        }
     }
 
     private fun lateTick() {

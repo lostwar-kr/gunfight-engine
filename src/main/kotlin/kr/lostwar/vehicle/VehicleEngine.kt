@@ -11,7 +11,7 @@ import org.bukkit.event.Listener
 
 object VehicleEngine : Engine("andoo") {
 
-    var isDebugging = true
+    var isDebugging = false
 
     override val listeners: List<Listener> = listOf(
         VehicleEntity.Companion,

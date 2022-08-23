@@ -12,7 +12,8 @@
     <name>gunfight-engine</name>
 
     <properties>
-        <server.directory>${project.basedir}/../../../.IC2022bukkit/</server.directory>
+        <game_server.directory>${project.basedir}/../../../.IC2022bukkit/</game_server.directory>
+        <lobby_server.directory>${project.basedir}/../../../.IC2022bukkitLobby/</lobby_server.directory>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>17</kotlin.compiler.jvmTarget>
@@ -137,11 +138,17 @@
                         <configuration>
                             <target>
                                 <copy file="${project.basedir}/../${pigeonlib.library.directory}"
-                                      tofile="${server.directory}/plugins/pigeon-library.jar"/>
+                                      tofile="${game_server.directory}/plugins/pigeon-library.jar"/>
                                 <copy file="${project.basedir}/../${pigeonlib.kotlin-plugin.directory}"
-                                      tofile="${server.directory}/plugins/kotlin-plugin.jar"/>
+                                      tofile="${game_server.directory}/plugins/kotlin-plugin.jar"/>
                                 <copy file="${project.basedir}/target/${project.artifactId}-${project.version}.jar"
-                                      tofile="${server.directory}/plugins/${project.artifactId}.jar"/>
+                                      tofile="${game_server.directory}/plugins/${project.artifactId}.jar"/>
+                                <copy file="${project.basedir}/../${pigeonlib.library.directory}"
+                                      tofile="${lobby_server.directory}/plugins/pigeon-library.jar"/>
+                                <copy file="${project.basedir}/../${pigeonlib.kotlin-plugin.directory}"
+                                      tofile="${lobby_server.directory}/plugins/kotlin-plugin.jar"/>
+                                <copy file="${project.basedir}/target/${project.artifactId}-${project.version}.jar"
+                                      tofile="${lobby_server.directory}/plugins/${project.artifactId}.jar"/>
                             </target>
                         </configuration>
                     </execution>

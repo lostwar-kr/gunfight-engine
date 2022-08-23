@@ -8,10 +8,29 @@ import kr.lostwar.util.command.SubCommand
 import kr.lostwar.util.command.SubCommandExecuteData
 import kr.lostwar.util.ui.text.colorMessage
 import kr.lostwar.util.ui.text.errorMessage
+import kr.lostwar.vehicle.VehicleEngine
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
 object WeaponCommand : MultiCommand("fullmetaljacket", "fullmetaljacket", aliases = listOf("fmj", "fm")) {
+
+    init {
+        permission = "fmj.command"
+    }
+
+    override fun isSuggestible(sender: CommandSender): Boolean {
+        return sender.isOp
+    }
+
+    override fun isExecutable(sender: CommandSender): Boolean {
+        return sender.isOp
+    }
+
+    private val debugCommand = object : OperatorSubCommand("debug") {
+        override fun SubCommandExecuteData.execute() {
+            GunEngine.isDebugging = !GunEngine.isDebugging
+        }
+    }
 
     private val reloadCommand = object : OperatorSubCommand("reload") {
         override fun SubCommandExecuteData.execute() {

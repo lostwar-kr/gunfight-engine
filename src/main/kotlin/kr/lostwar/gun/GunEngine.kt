@@ -15,6 +15,9 @@ import org.bukkit.command.Command
 import org.bukkit.event.Listener
 
 object GunEngine : Engine("full-metal-jacket") {
+
+    var isDebugging = false
+
     override val listeners: List<Listener> = listOf(
         WeaponListener,
         WeaponPlayer.Companion,
