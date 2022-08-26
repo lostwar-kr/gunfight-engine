@@ -8,6 +8,7 @@ import kr.lostwar.util.math.VectorUtil.getBukkitVector
 import kr.lostwar.util.math.VectorUtil.toVectorString
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleHitbox.Companion.getVehicleHitbox
+import kr.lostwar.vehicle.core.VehicleSeatInfo.Companion.getSeatInfo
 import kr.lostwar.vehicle.core.VehicleTurretInfo.Companion.getTurretInfo
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
@@ -24,6 +25,7 @@ class VehicleModelInfo(
     val noMarker: Boolean = false,
     val parentKey: String? = null,
     val turretInfo: VehicleTurretInfo? = null,
+    val seatInfo: VehicleSeatInfo? = null,
 ) {
     var parent: VehicleModelInfo? = null
     val isKinematicEntity = !hitbox.isEmpty()
@@ -55,6 +57,7 @@ class VehicleModelInfo(
                 noMarker,
                 parentKey,
                 turretInfo,
+                null, // no seat info on model
             )
         }
         fun ConfigurationSection.getModelInfoList(key: String, default: List<VehicleModelInfo> = emptyList()): List<VehicleModelInfo> {
@@ -92,6 +95,8 @@ class VehicleModelInfo(
 
             val parentKey = (get("parent") ?: default?.parentKey) as? String
 
+            val seatInfo = (get("seat") as? ConfigurationSection)?.getSeatInfo() ?: default?.seatInfo
+
             return VehicleModelInfo(
                 key,
                 type,
@@ -101,7 +106,8 @@ class VehicleModelInfo(
                 small,
                 noMarker,
                 parentKey,
-                // no turret info at seat
+                null, // no turret info at seat
+                seatInfo,
             )
         }
     }

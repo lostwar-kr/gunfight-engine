@@ -84,6 +84,7 @@ abstract class VehicleInfo(
     val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
     val deathExplosionDamageDecreasePerDistance: Double = getDouble("entity.death.explosion.damageDecreasePerDistance", parent?.deathExplosionDamageDecreasePerDistance, 2.0)
     val deathExplosionPassengerDamageMultiply: Double = getDouble("entity.death.explosion.damagePassengerMultiply", parent?.deathExplosionPassengerDamageMultiply, 1000.0)
+    open val deathExplosionTryStretchParachute: Boolean = getBoolean("entity.death.explosion.tryStretchParachute", false)
 
     val upStep: Float = getDouble("general.physics.upStep", parent?.upStep?.toDouble(), 1.0).toFloat()
     val collisionDamagePerSpeed: Double = getDouble("general.physics.collision.damagePerSpeed", parent?.collisionDamagePerSpeed, 1.0)

@@ -52,6 +52,8 @@ open class ParachuteInfo(
 
     val disableExitTicks: Int = getInt("parachute.extra.disableExitTicks", parent?.disableExitTicks, 10)
 
+    override val deathExplosionTryStretchParachute: Boolean = false
+
     init {
         if(primaryParachute == null) {
             primaryParachute = this
@@ -79,29 +81,32 @@ open class ParachuteInfo(
         fun PlayerToggleSneakEvent.onSneak() {
             if(!isSneaking) return
             val player = player
-            if(player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) return
-            if(player.vehicle != null) return
-            val parachute = primaryParachute ?: return
+            tryStretchParachute(player)
+        }
+
+        fun tryStretchParachute(player: Player, parachute: ParachuteInfo? = primaryParachute): Boolean {
+            if(parachute == null) return false
+            if(player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) return false
+            if(player.vehicle != null) return false
 
             val standing = player.location.block
-            if(!standing.isAir) {
-                return
-            }
+            if(!standing.isAir) return false
             for(dx in horizontalCheckRange) {
                 for(dz in horizontalCheckRange) {
                     for(dy in verticalCheckRange) {
                         if(!standing.getRelative(dx, dy, dz).isAir){
-                            return
+                            return false
                         }
                     }
                 }
             }
             for(dy in verticalOnlyCheckRange) {
                 if(!standing.getRelative(0, dy, 0).isAir){
-                    return
+                    return false
                 }
             }
             parachute.stretch(player)
+            return true
         }
 
     }

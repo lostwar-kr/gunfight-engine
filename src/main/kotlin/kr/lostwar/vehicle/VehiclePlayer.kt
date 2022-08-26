@@ -1,10 +1,13 @@
 package kr.lostwar.vehicle
 
+import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.inventory.ItemStack
 import java.util.*
+import kotlin.collections.ArrayList
 
 class VehiclePlayer(
     player: Player
@@ -101,5 +104,33 @@ class VehiclePlayer(
 
 
     var isReseating = false
+
+    private val hotbarSize = 9
+    private val air = ItemStack(Material.AIR)
+    private val hotbarHolder: ArrayList<ItemStack> = ArrayList<ItemStack>(hotbarSize)
+        .also { for(i in 0 until hotbarSize) it.add(air) }
+
+    /**
+     * 플레이어가 현재 들고있는 아이템을 핫바 홀더에 저장합니다.
+     */
+    fun pushHotbarHolder() {
+        (0 until hotbarSize).map { player.inventory.getItem(it) ?: air }
+            .forEachIndexed { index, item ->
+                hotbarHolder[index] = item
+                player.inventory.setItem(index, null)
+            }
+    }
+
+    /**
+     * 플레이어의 핫바 홀더에서 아이템을 꺼냅니다.
+     */
+    fun popHotbarHolder() {
+        (0 until hotbarSize).forEach { index ->
+            val item = hotbarHolder[index]
+            player.inventory.setItem(index, item)
+            hotbarHolder[index] = air
+        }
+
+    }
 
 }

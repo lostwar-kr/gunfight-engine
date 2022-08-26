@@ -28,6 +28,9 @@ class SeatEntity(
 
         }
 
+
+    val attachedWeapons = info.seatInfo?.attachedWeapons?.map { it?.instantiate()?.first }?.toMutableList()
+
     var passenger: Player? = null
         set(value) {
             field = value
@@ -53,12 +56,29 @@ class SeatEntity(
         entity.addPassenger(player)
         vehiclePlayer.isReseating = false
         VehicleEnterEvent(vehicle, player, this).callEvent()
+
+        // 무기 장착 처리
+        if(attachedWeapons != null) {
+            vehiclePlayer.pushHotbarHolder()
+            for(i in 0 until 9) {
+                player.inventory.setItem(i, attachedWeapons[i])
+            }
+        }
         return true
     }
 
     fun exit(): Boolean {
-        if(passenger != null) {
-            VehicleExitEvent(vehicle, passenger!!, this).callEvent()
+        passenger?.let { player ->
+            VehicleExitEvent(vehicle, player, this).callEvent()
+
+            val vehiclePlayer = player.vehiclePlayer
+            if(attachedWeapons != null) {
+                for(i in 0 until 9) {
+                    // 썼던 거 되돌려놓기
+                    attachedWeapons[i] = player.inventory.getItem(i)
+                }
+                vehiclePlayer.popHotbarHolder()
+            }
         }
         passenger = null
         entity.eject()

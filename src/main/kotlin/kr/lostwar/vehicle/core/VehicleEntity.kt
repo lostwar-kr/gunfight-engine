@@ -25,6 +25,7 @@ import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.SavedVehicleEntity.Companion.save
+import kr.lostwar.vehicle.core.parachute.ParachuteInfo
 import kr.lostwar.vehicle.event.*
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
 import org.bukkit.*
@@ -470,6 +471,13 @@ open class VehicleEntity<T : VehicleInfo>(
                 if(event.callEvent()) {
 //                    console("  * event not cancelled, applied damage ${event.damage}")
                     entity.damage(event.damage, Constants.vehicleExplosionDamageCause)
+                }
+            }
+
+            if(base.deathExplosionTryStretchParachute) {
+                for(lastPassenger in lastPassengers) {
+                    if(lastPassenger.isDead) continue
+                    ParachuteInfo.tryStretchParachute(lastPassenger)
                 }
             }
         }
