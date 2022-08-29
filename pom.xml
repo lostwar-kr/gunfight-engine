@@ -29,7 +29,7 @@
         <pigeonlib.kotlin-plugin.directory>${pigeonlib.directory}/${pigeonlib.kotlin-plugin.file}</pigeonlib.kotlin-plugin.directory>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <maven.compiler.useIncrementalCompilation>true</maven.compiler.useIncrementalCompilation>
-        <NEXUS-HOST>marsys.kr:10012</NEXUS-HOST>
+        <NEXUS-HOST>59.11.245.108:10012</NEXUS-HOST>
     </properties>
 
     <repositories>
@@ -64,7 +64,6 @@
 
     <build>
         <sourceDirectory>src/main/kotlin</sourceDirectory>
-        <testSourceDirectory>src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -93,14 +92,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.2</version>
-            </plugin>
 
 
             <plugin>
@@ -126,6 +117,7 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <version>3.0.0</version>
                 <executions>

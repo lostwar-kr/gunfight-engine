@@ -84,27 +84,33 @@ open class ParachuteInfo(
             tryStretchParachute(player)
         }
 
-        fun tryStretchParachute(player: Player, parachute: ParachuteInfo? = primaryParachute): Boolean {
-            if(parachute == null) return false
-            if(player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) return false
-            if(player.vehicle != null) return false
+        val Player.isParachuteStretchable: Boolean
+            get() {
+                if(gameMode == GameMode.SPECTATOR || gameMode == GameMode.CREATIVE) return false
+                if(vehicle != null) return false
 
-            val standing = player.location.block
-            if(!standing.isAir) return false
-            for(dx in horizontalCheckRange) {
-                for(dz in horizontalCheckRange) {
-                    for(dy in verticalCheckRange) {
-                        if(!standing.getRelative(dx, dy, dz).isAir){
-                            return false
+                val standing = location.block
+                if(!standing.isAir) return false
+                for(dx in horizontalCheckRange) {
+                    for(dz in horizontalCheckRange) {
+                        for(dy in verticalCheckRange) {
+                            if(!standing.getRelative(dx, dy, dz).isAir){
+                                return false
+                            }
                         }
                     }
                 }
-            }
-            for(dy in verticalOnlyCheckRange) {
-                if(!standing.getRelative(0, dy, 0).isAir){
-                    return false
+                for(dy in verticalOnlyCheckRange) {
+                    if(!standing.getRelative(0, dy, 0).isAir){
+                        return false
+                    }
                 }
+                return true
             }
+
+        fun tryStretchParachute(player: Player, parachute: ParachuteInfo? = primaryParachute): Boolean {
+            if(parachute == null) return false
+            if(!player.isParachuteStretchable) return false
             parachute.stretch(player)
             return true
         }
