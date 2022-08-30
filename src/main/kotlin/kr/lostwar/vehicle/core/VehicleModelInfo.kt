@@ -6,6 +6,7 @@ import kr.lostwar.util.item.ItemData.Companion.toItemData
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.getBukkitVector
 import kr.lostwar.util.math.VectorUtil.toVectorString
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.core.VehicleHitbox.Companion.getVehicleHitbox
 import kr.lostwar.vehicle.core.VehicleSeatInfo.Companion.getSeatInfo
@@ -95,7 +96,7 @@ class VehicleModelInfo(
 
             val parentKey = (get("parent") ?: default?.parentKey) as? String
 
-            val seatInfo = (get("seat") as? ConfigurationSection)?.getSeatInfo() ?: default?.seatInfo
+            val seatInfo = (get("seat") as? Map<String, Any>)?.getSeatInfo() ?: default?.seatInfo
 
             return VehicleModelInfo(
                 key,

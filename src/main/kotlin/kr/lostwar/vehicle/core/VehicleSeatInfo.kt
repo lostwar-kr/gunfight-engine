@@ -10,14 +10,13 @@ class VehicleSeatInfo(
 ) {
     companion object {
 
-        fun ConfigurationSection.getSeatInfo(): VehicleSeatInfo? {
-
-            val attachedWeapons = if(isList("attachedWeapons")) {
-                getStringList("attachedWeapons").map { if(it.isBlank()) null else (WeaponType[it] ?: run {
+        fun Map<String, Any>.getSeatInfo(): VehicleSeatInfo? {
+            val attachedWeapons = (get("attachedWeapons") as? List<String> ?: emptyList()).map {
+                if(it.isBlank()) null else (WeaponType[it] ?: run {
                     consoleWarn("invalid weapon type ${it} while loading seat info")
                     null
-                }) }.takeIf { it.size in 1 .. 9 } ?: return logErrorNull("invalid size on attached weapons")
-            } else null // null -> 아무것도 안 할거임
+                })
+            }.takeIf { it.size in 1 .. 9 } ?: return logErrorNull("invalid size on attached weapons")
 
             return VehicleSeatInfo(
                 attachedWeapons,

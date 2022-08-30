@@ -60,8 +60,8 @@ class SeatEntity(
         // 무기 장착 처리
         if(attachedWeapons != null) {
             vehiclePlayer.pushHotbarHolder()
-            for(i in 0 until 9) {
-                player.inventory.setItem(i, attachedWeapons[i])
+            for((index, item) in attachedWeapons.withIndex()) {
+                player.inventory.setItem(index, item)
             }
         }
         return true
@@ -73,7 +73,7 @@ class SeatEntity(
 
             val vehiclePlayer = player.vehiclePlayer
             if(attachedWeapons != null) {
-                for(i in 0 until 9) {
+                for(i in attachedWeapons.indices) {
                     // 썼던 거 되돌려놓기
                     attachedWeapons[i] = player.inventory.getItem(i)
                 }
