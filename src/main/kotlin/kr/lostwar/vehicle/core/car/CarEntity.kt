@@ -20,11 +20,9 @@ import kr.lostwar.vehicle.core.VehicleTransform.Companion.eulerRoll
 import kr.lostwar.vehicle.event.VehiclePushEntityEvent
 import org.bukkit.GameMode
 import org.bukkit.Location
-import org.bukkit.entity.Damageable
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
-import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.util.Vector
 import kotlin.math.abs
 
@@ -326,11 +324,11 @@ class CarEntity(
     }
 
     private var oldBoatState: BoatNMSUtil.BoatState? = null
-    private var boatState: BoatNMSUtil.BoatState = getBoatState()
+    var boatState: BoatNMSUtil.BoatState = updateBoatState()
     private var boatWaterLevel: Double = 0.0
-    private var boatLandFriction: Double = 0.0
+    var boatLandFriction: Double = 0.0
     private var boatLastDeltaY = 0.0
-    private fun getBoatState(): BoatNMSUtil.BoatState {
+    private fun updateBoatState(): BoatNMSUtil.BoatState {
         val (_, entity) = kinematicEntities.entries.first()
         entity.entity.isUnderWater()?.let {
             boatWaterLevel = entity.boundingBox.maxY + 0.001
@@ -352,7 +350,7 @@ class CarEntity(
         val (_, entity) = kinematicEntities.entries.first()
         val info = entity.info
         oldBoatState = boatState
-        boatState = getBoatState()
+        boatState = updateBoatState()
 
         val y = entity.location.y
         var invFriction = 0.05
