@@ -554,7 +554,7 @@ open class VehicleEntity<T : VehicleInfo>(
     }
 
     open fun exit(riding: ArmorStand, player: Player, forced: Boolean = false): Boolean {
-        val exitEvent = VehiclePreExitEvent(this, player, riding)
+        val exitEvent = VehiclePreExitEvent(this, player, riding, forced)
         exitEvent.callEvent()
         if(!forced && !isDead && exitEvent.isCancelled) {
             return false

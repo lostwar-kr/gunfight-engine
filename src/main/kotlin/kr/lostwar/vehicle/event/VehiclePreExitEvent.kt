@@ -11,6 +11,7 @@ class VehiclePreExitEvent(
     vehicleEntity: VehicleEntity<*>,
     val player: Player,
     val riding: ArmorStand,
+    val forced: Boolean
 ) : VehicleEvent(vehicleEntity), Kancellable {
 
     override var eventCancelled: Boolean = false
