@@ -77,6 +77,7 @@ abstract class VehicleInfo(
             .associateBy { it.event }
     }!!
 
+    val invincible: Boolean = getBoolean("entity.invincible", parent?.invincible, false)
     val health: Double = getDouble("entity.health", parent?.health, 100.0)
     val hitSound: SoundClip = getSoundClip("entity.hitSound", parent?.hitSound, SoundClip(listOf(SoundInfo(Sound.ENTITY_ITEM_BREAK))))
     val deathExplosionEnable: Boolean = getBoolean("entity.death.explosion.enable", parent?.deathExplosionEnable, true)

@@ -372,6 +372,7 @@ open class VehicleEntity<T : VehicleInfo>(
     fun damage(amount: Double, cause: DamageCause, victim: ArmorStand? = null, damager: Entity? = null, weapon: WeaponType? = null) {
         if(decoration) return
         if(isDead) return
+        if(base.invincible) return
 
         when(cause) {
             DamageCause.FALL, DamageCause.SUFFOCATION -> return
