@@ -20,6 +20,7 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.util.Vector
 import org.jetbrains.annotations.Contract
 import java.io.File
+import java.lang.reflect.InvocationTargetException
 import java.util.LinkedList
 import kotlin.collections.HashMap
 
@@ -30,7 +31,8 @@ abstract class VehicleInfo(
     val parent : VehicleInfo?,
 ) {
     val type: VehicleType<*> = get("type", parent?.type) {
-        VehicleType.getTypeOrNull(getString(it)) ?: error("cannot parse vehicle type: ${getString(it)}")
+        VehicleType.getTypeOrNull(getString(it))
+//            ?: error("cannot parse vehicle type: ${getString(it)}")
     }!!
     val displayName: String = getString("displayName", parent?.displayName, key)!!
 
@@ -231,11 +233,17 @@ abstract class VehicleInfo(
                     }
                     val parentVehicle = byKey[registeredInfo.parentKey] ?: continue
                     try {
-                        val vehicle = load(key, registeredInfo.config, registeredInfo.configFile, parentVehicle) ?: return
+                        val vehicle =
+                            load(key, registeredInfo.config, registeredInfo.configFile, parentVehicle) ?: return
                         byKey[key] = vehicle
+                        iterator.remove()
                         ++count
+                    } catch (ie: InvocationTargetException) {
+                        val e = ie.targetException
+                        VehicleEngine.logWarn("차량 ${key} 불러오는 중 예외 발생 ${e}: ${e.message}")
+                        e.stackTrace.forEach { VehicleEngine.logWarn(it.toString()) }
                     } catch (e: Exception) {
-                        VehicleEngine.logWarn("차량 ${key} 불러오는 중 예외 발생: ${e.message}")
+                        VehicleEngine.logWarn("차량 ${key} 불러오는 중 예외 발생 ${e}: ${e.message}")
                         e.stackTrace.forEach { VehicleEngine.logWarn(it.toString()) }
                     }
                 }
@@ -243,6 +251,7 @@ abstract class VehicleInfo(
                 if(level >= 50) {
                     VehicleEngine.logWarn("50level 이상 차량 상속 중단, 남은 차량 ${childVehicles.size}개")
                     childVehicles.forEach { VehicleEngine.logWarn(" - ${it.key} : ${registeredVehicles[it.key]?.parentKey}") }
+                    break
                 }
             }
         }

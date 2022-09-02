@@ -62,6 +62,9 @@ class VehicleModelInfo(
             )
         }
         fun ConfigurationSection.getModelInfoList(key: String, default: List<VehicleModelInfo> = emptyList()): List<VehicleModelInfo> {
+            if(!isList(key)) {
+                return default
+            }
             return getMapList(key)
                 .mapIndexedNotNull { index, map -> map.getModelInfo(index.toString(), if(default.size <= index) null else default[index]) }
         }

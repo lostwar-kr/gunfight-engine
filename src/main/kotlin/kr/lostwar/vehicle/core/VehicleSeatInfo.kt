@@ -16,7 +16,7 @@ class VehicleSeatInfo(
                     consoleWarn("invalid weapon type ${it} while loading seat info")
                     null
                 })
-            }.takeIf { it.size in 1 .. 9 } ?: return logErrorNull("invalid size on attached weapons")
+            }.takeIf { it.size in 0 .. 9 } ?: return logErrorNull("invalid size on attached weapons")
 
             return VehicleSeatInfo(
                 attachedWeapons,

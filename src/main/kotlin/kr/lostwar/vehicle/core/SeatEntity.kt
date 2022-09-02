@@ -1,5 +1,8 @@
 package kr.lostwar.vehicle.core
 
+import kr.lostwar.GunfightEngine
+import kr.lostwar.gun.GunEngine
+import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
@@ -63,6 +66,8 @@ class SeatEntity(
             for((index, item) in attachedWeapons.withIndex()) {
                 player.inventory.setItem(index, item)
             }
+            player.inventory.heldItemSlot = 0
+            player.weaponPlayer.updateCurrentWeapon()
         }
         return true
     }
@@ -78,6 +83,7 @@ class SeatEntity(
                     attachedWeapons[i] = player.inventory.getItem(i)
                 }
                 vehiclePlayer.popHotbarHolder()
+                player.weaponPlayer.updateCurrentWeapon()
             }
         }
         passenger = null
