@@ -709,6 +709,9 @@ open class VehicleEntity<T : VehicleInfo>(
         
         // 청크 관련 로직
         private val cachedVehicleStorage = HashMap<Long, MutableList<SavedVehicleEntity>>()
+        fun clearCachedVehicleStorage() {
+            cachedVehicleStorage.clear()
+        }
         @EventHandler
         fun EntitiesUnloadEvent.onDespawnByChunkUnload() {
             val vehicles = hashSetOf<VehicleEntity<*>>()
