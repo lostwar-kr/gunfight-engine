@@ -2,15 +2,20 @@ package kr.lostwar.vehicle.core
 
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
+import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.lerp
+import kr.lostwar.util.math.VectorUtil.localToWorld
 import kr.lostwar.util.math.VectorUtil.minus
+import kr.lostwar.util.math.VectorUtil.unaryMinus
 import kr.lostwar.util.ui.text.consoleWarn
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
+import org.bukkit.Color
 import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
+import org.bukkit.Particle
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.EntityType
 import org.bukkit.util.Vector
@@ -71,9 +76,21 @@ open class ModelEntity(
 
     val worldRawPosition; get() = worldTransform.position
     val worldLocation: Location
-        get() = (worldTransform.position - worldTransform.applyRotation(offset))
-            .toLocation(world)
-            .setDirection(worldTransform.forward)
+        get() {
+            val position = worldTransform.position
+            val offset = worldTransform.applyRotationOnlyYaw(offset)
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, -offset, 10)  ,
+//                Particle.DustOptions(Color.BLUE   , 0.5f))
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, -offset, 10)    ,
+//                Particle.DustOptions(Color.RED    , 0.5f))
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, -offset, 10)       ,
+//                Particle.DustOptions(Color.YELLOW  , 0.5f))
+
+            return (position - offset).toLocation(world).setDirection(worldTransform.forward)
+        }
 
     open fun tick() {
         if(parent == null) updateWorld()
@@ -101,9 +118,11 @@ open class ModelEntity(
             targetDirection = vehicle.transform.forward.clone()
         } else {
             val maxDistance = player.weaponPlayer.weapon?.type?.shoot?.adjustDirectionRange ?: 160.0
+            val eye = player.eyeLocation
+            val eyeDirection = eye.direction
             val raycast = player.world.rayTrace(
-                player.eyeLocation,
-                player.eyeLocation.direction,
+                eye,
+                eyeDirection,
                 maxDistance, FluidCollisionMode.NEVER, true, 1.0
             ) { entity ->
                 // 같은 차량에 탑승 중인 플레이어에 대해서 무시
@@ -120,22 +139,22 @@ open class ModelEntity(
                 }
                 true
             }
-            val hitPosition = if(raycast == null){
-                player.eyeLocation.toVector().add(player.eyeLocation.direction.multiply(maxDistance))
-            }else{
-                raycast.hitPosition
-            }
-            targetDirection = hitPosition.subtract(worldTransform.localToWorld(turret.localShootPosition)).normalize()
+            val hitPosition = raycast?.hitPosition
+                // 안 닿았으면, 최대거리로 설정
+                ?: eye.toVector().add(eyeDirection.clone().multiply(maxDistance))
+
+            targetDirection = hitPosition.subtract(turret.localShootPosition.localToWorld(eyeDirection).add(worldTransform.position)).normalize()
 //                .run { if(y < -0.6) player.eyeLocation.direction else this }
         }
         worldTransform.forward = lerp(worldTransform.forward, targetDirection, turret.rotateLerpSpeed)
     }
 
 
+    // 부모가 있으면 부모 기준 변환
+    // 없으면 root(차량) 기준 변환
+    private val parentWorldTransform; get() = parent?.worldTransform ?: vehicle.transform
     fun updateWorld() {
-        parent
-            ?. worldTransform?.localToWorld(localTransform, worldTransform, useOwnWorldRotation)
-            ?: vehicle.transform.localToWorld(localTransform, worldTransform, useOwnWorldRotation)
+        parentWorldTransform.localToWorld(localTransform, worldTransform, useOwnWorldRotation)
         updateChildrenWorld()
     }
     private fun updateChildrenWorld() {

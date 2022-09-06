@@ -1,12 +1,19 @@
 package kr.lostwar.vehicle.core
 
+import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
+import kr.lostwar.util.math.VectorUtil.modifiedY
 import kr.lostwar.util.math.VectorUtil.normalized
+import kr.lostwar.util.math.VectorUtil.plus
+import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.VectorUtil.toYawPitch
+import kr.lostwar.util.ui.text.console
+import org.bukkit.Color
 import org.bukkit.Location
+import org.bukkit.Particle
 import org.bukkit.World
 import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
@@ -73,6 +80,7 @@ class VehicleTransform(
             eulerAngleForPose = EulerAngle(pitch, 0.0, -roll)
 //            console("angle            : ${"&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(pitch, yaw, roll)}")
 //            console("eulerAngleForPose: ${eulerAngleForPose.run { "&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(x, y, z) }}")
+//            console("x, y, z : ${"&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(right.length(), up.length(), forward.length())}")
         }
     var eulerAngleForPose = EulerAngle.ZERO; private set
 
@@ -88,8 +96,19 @@ class VehicleTransform(
             // 가슴이웅장해진다...모장은진짜레전드게임사
             rotation = Vector(pitch, -yaw, 0f)
             eulerAngleForPose = EulerAngle(pitch.toDouble(), 0.0, 0.0)
-            up = VectorUtil.UP
-            right = forward.getCrossProduct(up)
+            right = forward.getCrossProduct(VectorUtil.UP).normalize()
+            up = right.getCrossProduct(forward).normalize()
+//            console("x, y, z(set forward) : ${"&c%6.3f&r, &a%6.3f&r, &9%6.3f".format(right.length(), up.length(), forward.length())}")
+
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, forward, 10)  ,
+//                Particle.DustOptions(Color.BLUE   , 0.5f))
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, right, 10)    ,
+//                Particle.DustOptions(Color.RED    , 0.5f))
+//            DrawUtil.drawPoints(
+//                DrawUtil.getRay(position, up, 10)       ,
+//                Particle.DustOptions(Color.GREEN  , 0.5f))
         }
     // local X
     var right: Vector = VectorUtil.RIGHT; private set
@@ -112,6 +131,21 @@ class VehicleTransform(
         val x = right
         val y = up
         val z = forward
+
+        return Vector(
+            tx * x.x + ty * y.x + tz * z.x,
+            tx * x.y + ty * y.y + tz * z.y,
+            tx * x.z + ty * y.z + tz * z.z,
+        )
+    }
+    fun applyRotationOnlyYaw(localPosition: Vector): Vector {
+        val tx = localPosition.x
+        val ty = localPosition.y
+        val tz = localPosition.z
+
+        val x = right.modifiedY(0.0).normalize()
+        val y = VectorUtil.UP
+        val z = forward.modifiedY(0.0).normalize()
 
         return Vector(
             tx * x.x + ty * y.x + tz * z.x,
@@ -146,6 +180,8 @@ class VehicleTransform(
 
         if(!ignoreRotation)
             childWorld.eulerRotation = rotation.clone().add(childLocal.rotation)
+//        else
+//            childWorld.eulerRotation = rotation.clone()
     }
 
     fun transform(info: VehicleModelInfo): Vector {
