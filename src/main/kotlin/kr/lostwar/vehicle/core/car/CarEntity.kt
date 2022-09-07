@@ -324,7 +324,7 @@ class CarEntity(
     }
 
     private var oldBoatState: BoatNMSUtil.BoatState? = null
-    var boatState: BoatNMSUtil.BoatState = updateBoatState()
+    var boatState: BoatNMSUtil.BoatState = BoatNMSUtil.BoatState.ON_LAND
     private var boatWaterLevel: Double = 0.0
     var boatLandFriction: Double = 0.0
     private var boatLastDeltaY = 0.0
