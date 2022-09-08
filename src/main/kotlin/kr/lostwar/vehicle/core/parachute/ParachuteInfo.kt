@@ -61,12 +61,12 @@ open class ParachuteInfo(
     }
     override fun spawn(location: Location, decoration: Boolean) = ParachuteEntity(this, location, decoration)
 
-    fun stretch(player: Player) {
+    fun stretch(player: Player): Boolean {
         val spawnLocation = player.location
         spawnLocation.pitch = 0f
 
         val entity = spawn(spawnLocation)
-        entity.ride(player, true)
+        return entity.ride(player) >= 0
     }
 
     companion object : Listener {
@@ -111,8 +111,7 @@ open class ParachuteInfo(
         fun tryStretchParachute(player: Player, parachute: ParachuteInfo? = primaryParachute): Boolean {
             if(parachute == null) return false
             if(!player.isParachuteStretchable) return false
-            parachute.stretch(player)
-            return true
+            return parachute.stretch(player)
         }
 
     }
