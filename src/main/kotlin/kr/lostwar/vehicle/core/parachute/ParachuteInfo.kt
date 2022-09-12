@@ -76,7 +76,7 @@ open class ParachuteInfo(
         private val verticalCheckRange = 0 downTo -verticalCheckHeight
         private val verticalOnlyCheckHeight = 10
         private val verticalOnlyCheckRange = -verticalCheckHeight downTo -verticalOnlyCheckHeight
-        private val Block.isAir; get() = CustomMaterialSet.completelyPassable.contains(type)
+        private val Block.isAir; get() = !CustomMaterialSet.fluids.contains(type) && CustomMaterialSet.completelyPassable.contains(type)
         @EventHandler
         fun PlayerToggleSneakEvent.onSneak() {
             if(!isSneaking) return

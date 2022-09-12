@@ -23,6 +23,7 @@ import org.bukkit.Location
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.util.Vector
 import kotlin.math.abs
 
@@ -427,6 +428,17 @@ class CarEntity(
 
         if(base.floatOnWater) {
             floatBoat()
+        }else{
+            for(kinematic in kinematicEntities.values) {
+                val state = kinematic.entity.isUnderWater()
+                if(state == BoatNMSUtil.BoatState.IN_WATER
+                    || state == BoatNMSUtil.BoatState.UNDER_WATER
+                    || state == BoatNMSUtil.BoatState.UNDER_FLOWING_WATER
+                ){
+                    damage(1.0, EntityDamageEvent.DamageCause.DROWNING)
+                    break
+                }
+            }
         }
 
         var finalStepUp = 0.0
