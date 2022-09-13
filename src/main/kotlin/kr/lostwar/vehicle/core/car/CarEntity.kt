@@ -65,7 +65,7 @@ class CarEntity(
                 // 플레이어 게임모드 스킵
                 if(entity.type == EntityType.PLAYER) {
                     val player = entity as Player
-                    if(player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) {
+                    if(player == lastDriver || player.gameMode == GameMode.SPECTATOR || player.gameMode == GameMode.CREATIVE) {
                         return@getNearbyEntities false
                     }
                 }

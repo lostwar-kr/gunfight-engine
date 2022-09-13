@@ -99,7 +99,8 @@ class VehicleModelInfo(
 
             val parentKey = (get("parent") ?: default?.parentKey) as? String
 
-            val seatInfo = (get("seat") as? Map<String, Any>)?.getSeatInfo() ?: default?.seatInfo
+//            console("seat: ${get("seat")}")
+            val seatInfo = (get("seat") as? Map<String, Any>)?.getSeatInfo(default?.seatInfo) ?: default?.seatInfo
 
             return VehicleModelInfo(
                 key,

@@ -11,6 +11,7 @@ import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil.ZERO
+import kr.lostwar.util.math.VectorUtil.dot
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
@@ -615,21 +616,23 @@ open class VehicleEntity<T : VehicleInfo>(
             }
 
             val origin = player.eyeLocation
-            val forward = origin.clone().add(origin.direction.multiply(1.5))
-            val entities = forward.getNearbyEntitiesByType(ArmorStand::class.java, 1.5)
+            val direction = origin.direction
+            val scanCenter = origin.clone().add(origin.direction.multiply(1.5))
+            val entities = scanCenter.getNearbyEntitiesByType(ArmorStand::class.java, 3.0)
             val vehicles = entities
                 .mapNotNull {
                     val uniqueId = it.vehicleEntityIdOrNull ?: return@mapNotNull null
                     it!! to uniqueId
                 }
-                .groupBy { it.second }
-                .mapValues { it.value.minByOrNull { (entity, id) -> origin.distanceSquared(entity.location) }!! }
+                .distinctBy { it.second }
+                .sortedByDescending { (entity, id) -> direction.dot(byUUID[id]!!.location.subtract(origin).toVector().normalize()) }
 
-            for((id, _) in vehicles) {
+            for((_, id) in vehicles) {
                 val vehicle = byUUID[id] ?: continue
                 if(vehicle.ride(player) >= 0) return
             }
         }
+
 
         @EventHandler
         fun EntityDismountEvent.onDismount() {

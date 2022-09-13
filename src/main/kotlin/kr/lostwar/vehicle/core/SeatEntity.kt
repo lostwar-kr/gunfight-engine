@@ -1,6 +1,7 @@
 package kr.lostwar.vehicle.core
 
 import kr.lostwar.GunfightEngine
+import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
@@ -9,8 +10,11 @@ import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.onShootPrepare
 import kr.lostwar.vehicle.event.VehicleEnterEvent
 import kr.lostwar.vehicle.event.VehicleExitEvent
+import org.bukkit.Bukkit
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
+import org.bukkit.event.player.PlayerTeleportEvent
+import org.bukkit.util.Vector
 
 class SeatEntity(
     val index: Int,
@@ -32,7 +36,11 @@ class SeatEntity(
         }
 
 
-    val attachedWeapons = info.seatInfo?.attachedWeapons?.map { it?.instantiate()?.first }?.toMutableList()
+    val seatInfo; get() = this.info.seatInfo
+    val attachedWeapons = seatInfo?.attachedWeapons?.map { it?.instantiate()?.first }?.toMutableList()
+    val exitPosition; get() = seatInfo?.let {
+        worldTransform.localToWorld(it.exitOffset)
+    } ?: Vector()
 
     var passenger: Player? = null
         set(value) {
@@ -50,7 +58,7 @@ class SeatEntity(
             for(entity in oldVehicle.seatEntities){
                 if(entity.entityId == oldRiding.entityId) {
                     vehiclePlayer.isReseating = true
-                    entity.exit()
+                    entity.exit(false)
                     break
                 }
             }
@@ -72,7 +80,7 @@ class SeatEntity(
         return true
     }
 
-    fun exit(): Boolean {
+    fun exit(teleportExitPosition: Boolean = true): Boolean {
         passenger?.let { player ->
             VehicleExitEvent(vehicle, player, this).callEvent()
 
@@ -85,9 +93,17 @@ class SeatEntity(
                 vehiclePlayer.popHotbarHolder()
                 player.weaponPlayer.updateCurrentWeapon()
             }
-        }
+            if(teleportExitPosition && exitPosition.lengthSquared() > 0.0) {
+                val exitLocation = exitPosition
+                    .toLocation(vehicle.world)
+                    .setDirection(player.location.direction)
+                entity.eject()
+                Bukkit.getScheduler().runTaskLater(plugin, Runnable { player.teleport(exitLocation) }, 1)
+            }else{
+                entity.eject()
+            }
+        } ?: entity.eject()
         passenger = null
-        entity.eject()
         return true
     }
 
