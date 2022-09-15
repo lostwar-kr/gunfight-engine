@@ -274,11 +274,13 @@ open class VehicleEntity<T : VehicleInfo>(
 
         if(removeWhenAbandoned && !storeOnUnload) {
             if(isEmpty()) {
-                ++unusedTicks
-                if(unusedTicks > abandonedRemoveTimeInTicks) {
-                    death(explosion = false)
-                    return
+                if(!neverUsed) {
+                    if(unusedTicks > abandonedRemoveTimeInTicks) {
+                        death(explosion = false)
+                        return
+                    }
                 }
+                ++unusedTicks
             }else{
                 unusedTicks = 0
             }
