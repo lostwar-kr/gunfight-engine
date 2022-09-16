@@ -5,6 +5,7 @@ import kr.lostwar.gun.weapon.WeaponAction
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
 import kr.lostwar.gun.weapon.components.Ammo.Companion.currentLoadEvent
 import kr.lostwar.gun.weapon.components.Ammo.Companion.currentLoadMotion
+import kr.lostwar.gun.weapon.components.Ammo.Companion.isAmmoFull
 import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent.Type
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ExtraUtil.joinToString
@@ -190,7 +191,7 @@ enum class LoadMotionType(
             if(!ammo.reloadIndividuallyFillAmmoImmediately) {
                 weapon.ammo += 1
             }
-            if(weapon.ammo >= ammo.amount) {
+            if(weapon.isAmmoFull) {
                 weapon.ammo = ammo.amount
                 return false
             }

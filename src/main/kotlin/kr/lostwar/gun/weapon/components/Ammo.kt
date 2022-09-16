@@ -84,7 +84,7 @@ class Ammo(
         if (actions.isEmpty()) return null
         
         // 이미 탄창이 꽉 찬 상태로 재장전 시도하면 무시
-        if(eventType.isReload && weapon.ammo >= amount) {
+        if(eventType.isReload && weapon.isAmmoFull) {
             return null
         }
 
@@ -227,6 +227,8 @@ class Ammo(
         var Weapon.ammo: Int
             get() = get(AMMO) ?: 0
             set(value) { set(AMMO, value) }
+        val Weapon.isAmmoFull: Boolean
+            get() = type.ammo == null || ammo >= type.ammo!!.amount
         var Weapon.currentLoadMotion: LoadMotionType?
             get() = get(LOAD_MOTION)
             set(value) { set(LOAD_MOTION, value) }
