@@ -68,10 +68,13 @@ abstract class WeaponComponent(
         // config에 모듈 자체가 없으면 false 처리
         // 모듈만 있고, enable 키가 없으면 true 처리
         // 키가 있으면 해당 키 값 처리
-        val enableInConfig = config?.getBoolean("enable", true) ?: false
+        val enableInConfig = config?.getBoolean("enable", true)
+        if(enableInConfig == false) {
+            return@run false
+        }
         // 부모가 enable: true인 경우
         val parentEnable = parentComponent?.isEnable ?: false
-        (forceEnable || enableInConfig || parentEnable)
+        (forceEnable || enableInConfig ?: false || parentEnable)
     }.also {
         // 비활성화된 모듈은 로드 과정에서 throw exception
         if(!it) {

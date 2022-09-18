@@ -1,9 +1,6 @@
 package kr.lostwar.vehicle.core
 
-import kr.lostwar.util.Config
-import kr.lostwar.util.ConfigUtil
-import kr.lostwar.util.SoundClip
-import kr.lostwar.util.SoundInfo
+import kr.lostwar.util.*
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemData.Companion.getItemData
 import kr.lostwar.util.math.VectorUtil.getBukkitVector
@@ -83,6 +80,8 @@ abstract class VehicleInfo(
     val health: Double = getDouble("entity.health", parent?.health, 100.0)
     val hitSound: SoundClip = getSoundClip("entity.hitSound", parent?.hitSound, SoundClip(listOf(SoundInfo(Sound.ENTITY_ITEM_BREAK))))
     val deathExplosionEnable: Boolean = getBoolean("entity.death.explosion.enable", parent?.deathExplosionEnable, true)
+    val deathExplosionSound: SoundClip = getSoundClip("entity.death.explosion.sound", parent?.deathExplosionSound)
+    val deathExplosionEffect: ParticleSet = getParticleSet("entity.death.explosion.effect", parent?.deathExplosionEffect)
     val deathExplosionDamage: Double = getDouble("entity.death.explosion.damage", parent?.deathExplosionDamage, 20.0)
     val deathExplosionRadius: Double = getDouble("entity.death.explosion.damageRadius", parent?.deathExplosionRadius)
     val deathExplosionDamageDecreasePerDistance: Double = getDouble("entity.death.explosion.damageDecreasePerDistance", parent?.deathExplosionDamageDecreasePerDistance, 2.0)
@@ -138,6 +137,10 @@ abstract class VehicleInfo(
     protected fun getSoundClip(key: String, parentDef: SoundClip?, def: SoundClip = SoundClip.emptyClip): SoundClip {
         return get(key, parentDef, def) { k -> if(isList(k)) SoundClip.parse(getStringList(k)) else null }!!
     }
+    protected fun getParticleSet(key: String, parentDef: ParticleSet?, def: ParticleSet = ParticleSet.emptySet): ParticleSet {
+        return get(key, parentDef?.takeIf { it.isNotEmpty() }, def) { k -> ParticleSet.getParticleSetOrNull(this, k) }!!
+    }
+
     protected fun getFloatRange(
         key: String,
         parentDef: ClosedFloatingPointRange<Float>?,

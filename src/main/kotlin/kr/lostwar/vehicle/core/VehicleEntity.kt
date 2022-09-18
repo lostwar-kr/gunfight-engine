@@ -488,6 +488,9 @@ open class VehicleEntity<T : VehicleInfo>(
                     ParachuteInfo.tryStretchParachute(lastPassenger)
                 }
             }
+
+            base.deathExplosionSound.playAt(location)
+            base.deathExplosionEffect.executeEach { it.spawnAt(location, forced = true) }
         }
 
         val deathEvent = VehicleEntityDeathEvent(this, damageEvent)
