@@ -212,7 +212,11 @@ open class VehicleEntity<T : VehicleInfo>(
                 setPose(EquipmentSlot.OFF_HAND, transform.eulerAngleForPose)
             }
             equipment.setItem(info.type, info.item.toItemStack(), true)
-            addEquipmentLock(info.type, ArmorStand.LockType.REMOVING_OR_CHANGING)
+            for(slot in EquipmentSlot.values()) {
+                for(lockType in ArmorStand.LockType.values()) {
+                    addEquipmentLock(info.type, lockType)
+                }
+            }
             setMetadata(Constants.vehicleEntityKey, FixedMetadataValue(plugin, internalPrimaryEntity?.uniqueId ?: uniqueId.also {
                 internalPrimaryEntity = this
             }))
