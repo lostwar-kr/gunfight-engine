@@ -568,7 +568,7 @@ open class VehicleEntity<T : VehicleInfo>(
             }
             return entity.exit()
         }
-        return true
+        return false
     }
 
     fun callAnimation(eventKey: String) {
@@ -644,6 +644,7 @@ open class VehicleEntity<T : VehicleInfo>(
             if(dismounted.type != EntityType.ARMOR_STAND) return
             val player = entity as Player
             val vehiclePlayer = player.vehiclePlayer
+            if(vehiclePlayer.isExiting) return // 중복 하차 처리 방지
             val riding = dismounted as ArmorStand
             val vehicle = riding.asVehicleEntityOrNull ?: return
             // shift 를 조작키로 사용하는 차량의 경우

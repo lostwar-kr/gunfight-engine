@@ -166,6 +166,18 @@ class Weapon(
     }
 
     companion object {
+        fun takeOutWeaponType(item: ItemStack?): WeaponType? {
+            if(item == null) return null
+            if(!item.hasItemMeta()) return null
+            val meta = item.itemMeta
+            val itemContainer = meta.persistentDataContainer
+            val weaponContainer = itemContainer.get(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER) ?: return null
+            val key = weaponContainer[WeaponPropertyType.KEY]
+                ?: return GunEngine.logErrorNull("cannot Weapon::takeOutWeaponType from $item: container is valid, but cannot find key")
+            val info = WeaponType[key]
+                ?: return GunEngine.logErrorNull("cannot Weapon::takeOutWeaponType from $item: find key, but invalid weapon")
+            return info
+        }
         fun takeOut(item: ItemStack?): Weapon? {
             if(item == null) return null
             if(!item.hasItemMeta()) return null

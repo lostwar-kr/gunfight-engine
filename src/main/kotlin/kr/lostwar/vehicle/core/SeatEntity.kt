@@ -5,6 +5,7 @@ import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.VehiclePlayer.Companion.vehiclePlayer
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.onShootPrepare
@@ -15,6 +16,7 @@ import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
 import org.bukkit.event.player.PlayerTeleportEvent
 import org.bukkit.util.Vector
+import java.lang.Exception
 
 class SeatEntity(
     val index: Int,
@@ -72,6 +74,7 @@ class SeatEntity(
         if(attachedWeapons != null) {
             vehiclePlayer.pushHotbarHolder()
             for((index, item) in attachedWeapons.withIndex()) {
+                console("take from vehicle [$index]: $item")
                 player.inventory.setItem(index, item)
             }
             player.inventory.heldItemSlot = 0
@@ -85,10 +88,19 @@ class SeatEntity(
             VehicleExitEvent(vehicle, player, this).callEvent()
 
             val vehiclePlayer = player.vehiclePlayer
+            vehiclePlayer.isExiting = true
             if(attachedWeapons != null) {
+//                console("exit call stack trace ::")
+//                try {
+//                    throw Exception("stack trace")
+//                }catch (e: Exception) {
+//                    e.printStackTrace()
+//                }
                 for(i in attachedWeapons.indices) {
+                    val item = player.inventory.getItem(i)
+//                    console("storing to vehicle [$i]: $item")
                     // 썼던 거 되돌려놓기
-                    attachedWeapons[i] = player.inventory.getItem(i)
+                    attachedWeapons[i] = item
                 }
                 vehiclePlayer.popHotbarHolder()
                 player.weaponPlayer.updateCurrentWeapon()
@@ -102,6 +114,7 @@ class SeatEntity(
             }else{
                 entity.eject()
             }
+            vehiclePlayer.isExiting = false
         } ?: entity.eject()
         passenger = null
         return true

@@ -140,6 +140,9 @@ class Shoot(
         if(takeItemOnShoot) {
             val item = player.inventory.itemInMainHand
             item.amount -= 1
+            if(item.amount <= 0) {
+                WeaponAllUsedEvent(this).callEvent()
+            }
         }
     }
 
