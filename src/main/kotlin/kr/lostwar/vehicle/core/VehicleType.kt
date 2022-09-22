@@ -45,6 +45,7 @@ class VehicleType<T : VehicleInfo>(
         )
         val registeredTypes by lazy { types.toList() }
         val registeredTypesByName by lazy { registeredTypes.associateBy { it.name } }
+        val registeredTypesByClass by lazy { registeredTypes.associateBy { it.clazz } }
 
         fun getTypeOrNull(rawType: String?): VehicleType<out VehicleInfo>? {
             if(rawType == null) return null

@@ -74,7 +74,7 @@ class SeatEntity(
         if(attachedWeapons != null) {
             vehiclePlayer.pushHotbarHolder()
             for((index, item) in attachedWeapons.withIndex()) {
-                console("take from vehicle [$index]: $item")
+//                console("take from vehicle [$index]: $item")
                 player.inventory.setItem(index, item)
             }
             player.inventory.heldItemSlot = 0
@@ -85,7 +85,6 @@ class SeatEntity(
 
     fun exit(teleportExitPosition: Boolean = true): Boolean {
         passenger?.let { player ->
-            VehicleExitEvent(vehicle, player, this).callEvent()
 
             val vehiclePlayer = player.vehiclePlayer
             vehiclePlayer.isExiting = true
@@ -115,6 +114,8 @@ class SeatEntity(
                 entity.eject()
             }
             vehiclePlayer.isExiting = false
+
+            VehicleExitEvent(vehicle, player, this).callEvent()
         } ?: entity.eject()
         passenger = null
         return true

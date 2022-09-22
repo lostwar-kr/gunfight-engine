@@ -11,7 +11,6 @@ import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil.ZERO
-import kr.lostwar.util.math.VectorUtil.dot
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.times
@@ -41,6 +40,7 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
+import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemHeldEvent
 import org.bukkit.event.world.EntitiesLoadEvent
@@ -52,6 +52,7 @@ import org.bukkit.util.Vector
 import org.spigotmc.event.entity.EntityDismountEvent
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 open class VehicleEntity<T : VehicleInfo>(
     base: T,
@@ -609,6 +610,11 @@ open class VehicleEntity<T : VehicleInfo>(
             byUUID.entries.removeIf { it.value.isDead }
         }
 
+        private val ignoreClick = HashSet<UUID>()
+        @EventHandler
+        fun PlayerDropItemEvent.onDrop() {
+            ignoreClick.add(player.uniqueId)
+        }
         @EventHandler
         fun PlayerInteractEvent.onInteract() {
             if(action != Action.LEFT_CLICK_AIR) return
@@ -622,6 +628,10 @@ open class VehicleEntity<T : VehicleInfo>(
                         return
                     }
                 }
+            }
+            if(ignoreClick.contains(player.uniqueId)){
+                ignoreClick.remove(player.uniqueId)
+                return
             }
 
             val origin = player.eyeLocation
@@ -638,7 +648,10 @@ open class VehicleEntity<T : VehicleInfo>(
 
             for((_, id) in vehicles) {
                 val vehicle = byUUID[id] ?: continue
-                if(vehicle.ride(player) >= 0) return
+                if(vehicle.ride(player) >= 0){
+                    isCancelled = true
+                    return
+                }
             }
         }
 

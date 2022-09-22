@@ -1,5 +1,7 @@
 package kr.lostwar.gun.weapon
 
+import java.util.LinkedList
+
 abstract class WeaponAction(
     val weapon: Weapon
 ) {
@@ -12,15 +14,23 @@ abstract class WeaponAction(
         onStart()
         return true
     }
+    private val observersOnTick = LinkedList<() -> Unit>()
+    private val observersOnEnd = LinkedList<() -> Unit>()
+    fun subscribeOnTick(onTick: () -> Unit) = observersOnTick.add(onTick)
+    fun subscribeOnEnd(onEnd: () -> Unit) = observersOnEnd.add(onEnd)
     fun end(): Boolean {
         if(!isRunning) return false
         isRunning = false
         onEnd()
+        for(observer in observersOnEnd) observer()
+        observersOnEnd.clear()
+        observersOnTick.clear()
         return true
     }
     fun tick() {
         if(!isRunning) return
         onTick()
+        for(observer in observersOnTick) observer()
     }
     protected open fun onStart() {}
     protected abstract fun onTick()
@@ -30,4 +40,5 @@ abstract class WeaponAction(
     override fun toString(): String {
         return name
     }
+
 }

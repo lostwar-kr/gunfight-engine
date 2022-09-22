@@ -10,7 +10,6 @@ import kr.lostwar.gun.weapon.event.WeaponAnimationDetermineEvent.Type
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ExtraUtil.joinToString
 import kr.lostwar.util.SoundClip
-import kr.lostwar.util.ui.text.console
 
 class LoadAction(
     weapon: Weapon,
@@ -32,7 +31,18 @@ class LoadAction(
 
     var completed = false
     var lapsedTime = 0; private set
+    var expectDuration: Int = getDuration(); private set
     var delay = 0
+
+    // TODO not support individual reload (repeat)
+    private fun getDuration(startIndex: Int = 0): Int {
+        val motions = if(startIndex > 0) {
+            motions
+        }else{
+            motions.subList(startIndex, motions.size)
+        }
+        return motions.sumOf { it.duration(this) }
+    }
 
     override fun onStart() {
         weapon.currentLoadEvent = eventType
@@ -41,6 +51,7 @@ class LoadAction(
             currentMotion = startMotion
             currentMotionIndex = motions.indexOf(startMotion)
             delay = 0
+            expectDuration = getDuration(currentMotionIndex)
             with(currentMotion) { execute() }
         }
         // 중간부터 시작하는 게 아닐 경우
