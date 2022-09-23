@@ -80,6 +80,7 @@ object WeaponCommand : MultiCommand("fullmetaljacket", "fullmetaljacket", aliase
     }
 
     override val subCommands: List<SubCommand> = listOf(
+        debugCommand,
         reloadCommand,
         getCommand,
         listCommand,

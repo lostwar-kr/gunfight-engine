@@ -14,6 +14,7 @@ import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.localToWorld
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.math.VectorUtil.toVectorString
+import kr.lostwar.util.ui.text.console
 import org.bukkit.FluidCollisionMode
 import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
@@ -94,6 +95,9 @@ class Shoot(
         val currentAction = weapon.primaryAction
         if(currentAction is ShootAction) {
             currentAction.trigger()
+            return
+        }
+        if(currentAction is DelayAction){
             return
         }
         val triggerEvent = WeaponTriggerEvent(this)

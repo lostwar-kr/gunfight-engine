@@ -73,5 +73,6 @@ object GunEngine : Engine("full-metal-jacket") {
             }
         }
     }
+    fun debug(message: String) = if(isDebugging) log(message) else {}
 
 }

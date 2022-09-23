@@ -53,7 +53,10 @@ class Zoom(
     fun WeaponPlayer.zoom(zooming: Boolean) {
         val weapon = weapon ?: return
         if(weapon.primaryAction != null) {
-            return
+            // 만약 ShootAction인 경우, 발사 중단하고 조준 먼저
+            if(weapon.primaryAction !is ShootAction) {
+                return
+            }
         }
 
         val zoomAction = zoomAction(zooming) ?: return
