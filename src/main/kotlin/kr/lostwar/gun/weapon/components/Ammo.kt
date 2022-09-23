@@ -3,6 +3,7 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.*
+import kr.lostwar.gun.weapon.components.Zoom.Companion.isZooming
 import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ExtraUtil
@@ -74,7 +75,7 @@ class Ammo(
     private fun WeaponPlayer.loadActionGenerate(
         eventType: LoadEventType,
         motionType: LoadMotionType? = null
-    ): LoadAction? {
+    ): WeaponAction? {
         val weapon = weapon ?: return null
 
         val actions = boltLoadType[eventType]
@@ -83,6 +84,11 @@ class Ammo(
         // 이미 탄창이 꽉 찬 상태로 재장전 시도하면 무시
         if(eventType.isReload && weapon.isAmmoFull) {
             return null
+        }
+        weapon.type.zoom?.let { zoom ->
+            if(eventType.isReload && weapon.isZooming && !zoom.canReloadWhileZooming) {
+                return with(zoom) { zoomAction(false) }
+            }
         }
 
         return LoadAction(weapon, eventType, motionType)

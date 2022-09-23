@@ -63,7 +63,7 @@ class Zoom(
         weapon.primaryAction = zoomAction
     }
 
-    private fun WeaponPlayer.zoomAction(zooming: Boolean): ZoomAction? {
+    fun WeaponPlayer.zoomAction(zooming: Boolean): ZoomAction? {
         val weapon = weapon ?: return null
         return ZoomAction(weapon, zooming)
     }
@@ -78,7 +78,8 @@ class Zoom(
             }
         }else{
             player.removePotionEffect(slow.type)
-            player.removePotionEffect(nightVision.type)
+            if(applyNightVision)
+                player.removePotionEffect(nightVision.type)
         }
     }
 
