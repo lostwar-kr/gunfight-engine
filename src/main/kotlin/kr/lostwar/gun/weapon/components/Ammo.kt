@@ -3,10 +3,7 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.*
-import kr.lostwar.gun.weapon.event.WeaponActionEndEvent
-import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
-import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
-import kr.lostwar.gun.weapon.event.WeaponTriggerEvent
+import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ExtraUtil
 import kr.lostwar.util.SoundClip
@@ -168,6 +165,12 @@ class Ammo(
         startHoldingListenerForRecoverLoadAction,
         startHoldingListenerForReload,
         weaponActionEndListener,
+        WeaponPlayerEventListener(WeaponClickEvent::class.java, priority = EventPriority.MONITOR) { event ->
+            val weapon = this.weapon ?: return@WeaponPlayerEventListener
+            if(weapon.primaryAction != null) {
+                recoverAnimation()
+            }
+        },
         WeaponPlayerEventListener(PlayerDropItemEvent::class.java) { event ->
             val weapon = this.weapon ?: return@WeaponPlayerEventListener
             event.isCancelled = true

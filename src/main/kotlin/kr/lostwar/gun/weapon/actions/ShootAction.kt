@@ -183,7 +183,7 @@ class ShootAction(
                 State.BURST_PER_SHOT -> burst!!.triggerDelay // 괘씸죄
                 else -> 0
             }
-            console("ShootAction end but not completed: ${weapon.leftShootDelay}")
+//            console("ShootAction end but not completed: ${weapon.leftShootDelay}")
         }else{
             weapon.leftShootDelay = 0
         }

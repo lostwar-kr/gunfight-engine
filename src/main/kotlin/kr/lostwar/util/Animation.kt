@@ -65,11 +65,11 @@ data class AnimationFrame(
     }
 
     fun recover(weaponPlayer: WeaponPlayer, weaponType: WeaponType) {
-        console("recovering animation ${this} ...")
+//        console("recovering animation ${this} ...")
         if(item == null) return
         Bukkit.getScheduler().runTaskLater(plugin, Runnable {
             val player = weaponPlayer.player
-            console("send $item")
+//            console("send $item")
             val itemStack = weaponType.item.itemStack.materialAndData(item)
             player.sendEquipmentSelf(itemStack, slot)
         }, 2)
