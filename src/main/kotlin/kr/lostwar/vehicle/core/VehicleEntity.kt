@@ -20,6 +20,7 @@ import kr.lostwar.util.nms.NMSUtil.setDiscardFriction
 import kr.lostwar.util.nms.NMSUtil.setHardCollides
 import kr.lostwar.util.nms.NMSUtil.setImpulse
 import kr.lostwar.util.nms.NMSUtil.setMaxUpStep
+import kr.lostwar.util.nms.NMSUtil.updatePassengersPosition
 import kr.lostwar.util.nms.UnsafeNMSUtil.setCollidePredicate
 import kr.lostwar.vehicle.VehicleEngine
 import kr.lostwar.vehicle.VehicleEngine.isDebugging
@@ -681,6 +682,14 @@ open class VehicleEntity<T : VehicleInfo>(
             if(player.isDead) return
             if(!vehicle.exit(riding, player, !isCancellable)) {
                 isCancelled = true
+            }
+        }
+        @EventHandler(priority = EventPriority.MONITOR) fun EntityDismountEvent.onDismountFixer() {
+            if(!isCancellable) {
+                return
+            }
+            if(isCancelled) {
+                dismounted.updatePassengersPosition()
             }
         }
 
