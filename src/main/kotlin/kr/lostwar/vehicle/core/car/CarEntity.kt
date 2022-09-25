@@ -100,8 +100,8 @@ class CarEntity(
 
     private fun Double.square() = this * this
     private fun engineSound() {
-        if(abs(forwardSpeed) + abs(upSpeed) > 0) {
-            val percentage = ((forwardSpeed.square() + upSpeed.square()) / (base.maxSpeed.square())).toFloat()
+        if(abs(forwardSpeed) + abs(upSpeed) + abs(naturalDownSpeed) > 0) {
+            val percentage = ((forwardSpeed.square() + upSpeed.square() + naturalDownSpeed.square()) / (base.maxSpeed.square())).toFloat()
             base.engineSound.playAt(location,
                 volume = base.engineSoundVolumeRange.lerp(percentage),
                 pitch = base.engineSoundPitchRange.lerp(percentage),
