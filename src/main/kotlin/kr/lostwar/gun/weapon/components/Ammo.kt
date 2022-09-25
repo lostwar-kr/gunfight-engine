@@ -36,9 +36,9 @@ class Ammo(
     val reloadStartAnimation: AnimationClip = getAnimationClip("reload.reloadStartAnimation", parent?.reloadStartAnimation)
     val reloadEndAnimation: AnimationClip = getAnimationClip("reload.reloadEndAnimation", parent?.reloadEndAnimation)
 
-    val tacticalReloadAnimation: AnimationClip = getAnimationClip("tacticalReload.animation", parent?.tacticalReloadAnimation, reloadAnimation)
-    val tacticalReloadStartAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadStartAnimation", parent?.tacticalReloadStartAnimation, reloadStartAnimation)
-    val tacticalReloadEndAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadEndAnimation", parent?.tacticalReloadEndAnimation, reloadEndAnimation)
+    val tacticalReloadAnimation: AnimationClip = getAnimationClip("tacticalReload.animation", reloadAnimation.takeIf { it.isNotEmpty() } ?: parent?.tacticalReloadAnimation, reloadAnimation)
+    val tacticalReloadStartAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadStartAnimation", reloadStartAnimation.takeIf { it.isNotEmpty() } ?: parent?.tacticalReloadStartAnimation, reloadStartAnimation)
+    val tacticalReloadEndAnimation: AnimationClip = getAnimationClip("tacticalReload.reloadEndAnimation", reloadEndAnimation.takeIf { it.isNotEmpty() } ?: parent?.tacticalReloadEndAnimation, reloadEndAnimation)
 
     val reloadIndividually: Boolean = getBoolean("reloadIndividually.enable", parent?.reloadIndividually, false)
     val reloadIndividuallyWhenTacticalReload: Boolean = getBoolean("reloadIndividually.useWhenTacticalReload", parent?.reloadIndividuallyWhenTacticalReload, false)
