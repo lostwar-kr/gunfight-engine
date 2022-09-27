@@ -7,6 +7,7 @@ import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
 import kr.lostwar.util.AnimationFrame
 import kr.lostwar.util.nms.PacketUtil.resetCooldown
 import kr.lostwar.util.ui.ComponentUtil.darkGray
+import kr.lostwar.util.ui.text.colorMessage
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -141,7 +142,8 @@ class WeaponPlayer(
         val oldWeapon = weapon
         val newWeapon = Weapon.takeOut(newItem)
 //        GunEngine.log("oldWeapon: ${oldWeapon}")
-//        GunEngine.log("newWeapon: ${newWeaponType}:${newWeaponId}")
+//        GunEngine.log("newWeapon: ${newWeapon}")
+//        try { throw Exception("stacktrace") } catch(e: Exception) { e.printStackTrace() }
         if(oldWeapon != newWeapon) {
             this.weapon = newWeapon
             onChangeWeapon(oldWeapon, newWeapon, newItem)
@@ -168,6 +170,7 @@ class WeaponPlayer(
         }
         // 새로 드는 무기가 있을 경우
         else{
+//            GunEngine.log("WeaponStartHoldingEvent(old=${old}, oldItem=${oldItem}, new=${new}, newItem=${newItem})")
             new.type.callEvent(this, WeaponStartHoldingEvent(this, old, oldItem, new, newItem))
             weaponItem = newItem
         }

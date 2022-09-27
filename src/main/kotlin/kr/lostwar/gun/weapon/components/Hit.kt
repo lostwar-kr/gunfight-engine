@@ -13,6 +13,7 @@ import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldin
 import kr.lostwar.util.ParticleInfo.Companion.getParticleInfo
 import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.SoundClip
+import kr.lostwar.util.SoundClip.Companion.getSounds
 import kr.lostwar.util.block.BlockUtil
 import kr.lostwar.util.math.VectorUtil
 import kr.lostwar.util.math.VectorUtil.toLocationString
@@ -162,6 +163,7 @@ data class HitBlock(
     val pierceSolid: Boolean,
     val resistance: Double,
     val effect: ParticleSet,
+    val sound: SoundClip,
 ) {
     operator fun contains(material: Material) = types?.contains(material) ?: true
     companion object {
@@ -173,6 +175,7 @@ data class HitBlock(
             val pierceSolid = section.getBoolean("pierceSolid", default.pierceSolid)
             val resistance = section.getDouble("resistance", default.resistance)
             val effect = ParticleSet.getParticleSetOrNull(section, "effect") ?: default.effect
+            val sound = with(SoundClip) { section.getSounds("sound", default.sound) }
 
             val types =
                 if(!section.isList("types")) default.types
@@ -190,7 +193,8 @@ data class HitBlock(
                 blockRay,
                 pierceSolid,
                 resistance,
-                effect
+                effect,
+                sound
             )
         }
 
@@ -238,8 +242,10 @@ class HitBlockInteraction(
             false,
             1.0,
             ParticleSet.emptySet,
+            SoundClip.emptyClip,
         )) { hitBlock, location, result, block, hitNormal ->
             result.effect.forEach { it.spawnAt(location, offset = hitNormal) }
+            result.sound.playAt(location)
             result
         }
         private val interactions = mutableListOf<HitBlockInteraction>(
@@ -249,6 +255,7 @@ class HitBlockInteraction(
                 false,
                 0.0,
                 ParticleSet.emptySet,
+                SoundClip.emptyClip,
             )),
             HitBlockInteraction("glass", HitBlock(
                 CustomMaterialSet.glasses,
@@ -256,6 +263,7 @@ class HitBlockInteraction(
                 false,
                 0.0,
                 ParticleSet.emptySet,
+                SoundClip.emptyClip,
             )) { hitBlock, location, result, block, hitNormal ->
                 block.breakNaturally()
                 result
@@ -266,6 +274,7 @@ class HitBlockInteraction(
                 true,
                 0.5,
                 ParticleSet.emptySet,
+                SoundClip.emptyClip,
             )) { hitBlock, location, result, block, hitNormal ->
                 result
             },
