@@ -12,6 +12,7 @@ import kr.lostwar.vehicle.core.VehicleEntity.Companion.onShootPrepare
 import kr.lostwar.vehicle.event.VehicleEnterEvent
 import kr.lostwar.vehicle.event.VehicleExitEvent
 import org.bukkit.Bukkit
+import org.bukkit.GameMode
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.Player
 import org.bukkit.event.player.PlayerTeleportEvent
@@ -48,6 +49,9 @@ class SeatEntity(
         set(value) {
             field = value
         }
+
+    private val Player.isValidPassenger: Boolean
+        get() = isOnline && !isDead && gameMode != GameMode.SPECTATOR
 
     fun ride(player: Player): Boolean {
         if(passenger != null) {

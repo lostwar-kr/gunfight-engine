@@ -1,5 +1,6 @@
 package kr.lostwar.gun.weapon.components
 
+import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.gun.weapon.WeaponType
@@ -143,14 +144,24 @@ class Hitscan(
                 val headHitbox = BoundingBox.of(target.eyeLocation, headX, headY, headZ)
                 // DEBUG
 //                DrawUtil.drawFor(40, 10,
-//                    headHitbox.getOutline(2),
-//                    Particle.DustOptions(Color.RED, 1f),
-//                )
-//                DrawUtil.drawFor(40, 10,
 //                    hitbox.getOutline(2),
 //                    Particle.DustOptions(Color.GREEN, 1f),
 //                )
-                headHitbox.rayTrace(rayOrigin, rayDirection, maximumRange)
+                val result = headHitbox.rayTrace(rayOrigin, rayDirection, maximumRange)
+                if(GunEngine.isDebugging) {
+                    if(result != null) {
+                        DrawUtil.drawFor(40, 10,
+                            headHitbox.getOutline(2),
+                            Particle.DustOptions(Color.RED, 1f),
+                        )
+                    }else{
+                        DrawUtil.drawFor(40, 10,
+                            headHitbox.getOutline(2),
+                            Particle.DustOptions(Color.YELLOW, 0.5f),
+                        )
+                    }
+                }
+                result
             }else null
 //            GunEngine.log("- entity hit(${target}, ${dot}, ${hitResult})")
             EntityHitResult(target, dot, hitResult, hitHeadResult)

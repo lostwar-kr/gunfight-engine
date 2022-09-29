@@ -42,8 +42,10 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
 import org.bukkit.event.player.PlayerDropItemEvent
+import org.bukkit.event.player.PlayerGameModeChangeEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerItemHeldEvent
+import org.bukkit.event.player.PlayerSwapHandItemsEvent
 import org.bukkit.event.world.EntitiesLoadEvent
 import org.bukkit.event.world.EntitiesUnloadEvent
 import org.bukkit.inventory.EquipmentSlot
@@ -684,6 +686,20 @@ open class VehicleEntity<T : VehicleInfo>(
                 isCancelled = true
             }
         }
+        /*
+        @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+        fun PlayerGameModeChangeEvent.onGameModeChange() {
+            if(newGameMode != GameMode.SPECTATOR) {
+                return
+            }
+            val player = player
+            val riding = player.vehicle
+            val vehicle = riding?.asVehicleEntityOrNull ?: return
+            val ridingSeat = riding as ArmorStand
+            vehicle.exit(ridingSeat, player, true)
+        }
+
+         */
         @EventHandler(priority = EventPriority.MONITOR) fun EntityDismountEvent.onDismountFixer() {
             if(!isCancellable) {
                 return
@@ -719,6 +735,7 @@ open class VehicleEntity<T : VehicleInfo>(
             vehicle.damage(damage, DamageCause.CUSTOM, entity, player.player, weaponType)
         }
 
+        /*
         @EventHandler
         fun PlayerItemHeldEvent.onItemHeld() {
             val player = player
@@ -731,6 +748,20 @@ open class VehicleEntity<T : VehicleInfo>(
                 isCancelled = true
                 vehicle.exit(riding as ArmorStand, player)
             }
+        }
+
+         */
+
+        @EventHandler
+        fun PlayerSwapHandItemsEvent.onSwap() {
+            val player = player
+            val riding = player.vehicle ?: return
+            val vehicle = riding.asVehicleEntityOrNull ?: return
+            if(!vehicle.base.disableDriverExitVehicleByShiftKey) return
+            if(riding.entityId != vehicle.driverSeat.entityId) return
+
+            isCancelled = true
+            vehicle.exit(riding as ArmorStand, player)
         }
 
         @EventHandler
