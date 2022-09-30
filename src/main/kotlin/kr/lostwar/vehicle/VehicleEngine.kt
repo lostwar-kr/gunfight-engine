@@ -35,7 +35,7 @@ object VehicleEngine : Engine("andoo") {
     }
 
     override fun onUnload() {
-        VehicleEntity.byUUID.map { it.value }.forEach { it.death() }
+        VehicleEntity.byUUID.map { it.value }.forEach { it.death(explosion = false) }
     }
 
     fun loadVehicles() {
