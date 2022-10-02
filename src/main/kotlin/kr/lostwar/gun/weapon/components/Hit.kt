@@ -27,6 +27,7 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.Entity
 import org.bukkit.entity.LivingEntity
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.util.Vector
 
 class Hit(
@@ -46,6 +47,14 @@ class Hit(
     val headShotDamageAdd: Double = getDouble("entity.headShot.damageAdd", parent?.headShotDamageAdd, 0.0)
     val headShotDamageMultiply: Double = getDouble("entity.headShot.damageMultiply", parent?.headShotDamageMultiply, 2.0)
     val headShotSound: SoundClip = getSoundClip("entity.headShot.sound", parent?.headShotSound)
+
+    // fixme
+    val poisonDuration: Int = getInt("entity.poison.duration", parent?.poisonDuration, 0)
+    val poisonStrength: Int = getInt("entity.poison.strength", parent?.poisonStrength, 0)
+    private val poisonEffect = poisonDuration.takeIf { it > 0 }?.let { duration ->
+        PotionEffectType.POISON.createEffect(duration, poisonStrength).withParticles(false)
+    }
+
 
     fun WeaponPlayer.hitEntity(
         victim: LivingEntity,
@@ -98,6 +107,9 @@ class Hit(
         if(isPiercing) {
             pierceSound.playToPlayer(player)
         }
+
+        // fixme
+        poisonEffect?.let { victim.addPotionEffect(it) }
 
         return event.result
     }
