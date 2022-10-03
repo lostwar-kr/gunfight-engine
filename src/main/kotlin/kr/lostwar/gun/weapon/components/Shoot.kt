@@ -93,16 +93,16 @@ class Shoot(
     private fun WeaponPlayer.trigger() {
         val weapon = weapon ?: return
         val currentAction = weapon.primaryAction
+        val triggerEvent = WeaponTriggerEvent(this)
+            .callEventOnHoldingWeapon(true)
+        if(triggerEvent.isCancelled){
+            return
+        }
         if(currentAction is ShootAction) {
             currentAction.trigger()
             return
         }
         if(currentAction is DelayAction){
-            return
-        }
-        val triggerEvent = WeaponTriggerEvent(this)
-            .callEventOnHoldingWeapon()
-        if(triggerEvent.isCancelled){
             return
         }
 
