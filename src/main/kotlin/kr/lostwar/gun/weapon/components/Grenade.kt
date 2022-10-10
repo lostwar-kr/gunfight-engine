@@ -20,6 +20,7 @@ import org.bukkit.event.Event
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.EulerAngle
+import org.bukkit.util.Vector
 import kotlin.math.abs
 
 class Grenade(
@@ -65,9 +66,10 @@ class Grenade(
             private var count = delay
             private var isStuck = false
             private var stuckEntity: ArmorStand? = null
+            private var stuckFace: BlockFace? = null
             override fun run() {
                 if(count <= 0 || !isStuck && item.isDead) {
-                    val location = stuckEntity?.location ?: item.location
+                    val location = stuckEntity?.location?.add(stuckFace?.direction ?: Vector()) ?: item.location
                     if(!item.isDead) {
                         item.remove()
                     }
@@ -110,6 +112,7 @@ class Grenade(
                     else boundFace = if(oldZ < 0) BlockFace.SOUTH else BlockFace.NORTH
                 }
                 if(!isStuck && isSticky && boundFace != null) {
+                    stuckFace = boundFace
                     val world = player.world
                     val location = item.location
                         .subtract(oldX, oldY, oldZ)
