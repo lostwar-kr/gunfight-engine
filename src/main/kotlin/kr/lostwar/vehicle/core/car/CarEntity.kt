@@ -7,7 +7,7 @@ import kr.lostwar.util.math.lerp
 import kr.lostwar.util.nms.BoatNMSUtil
 import kr.lostwar.util.nms.BoatNMSUtil.getGroundFriction
 import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevel
-import kr.lostwar.util.nms.BoatNMSUtil.isUnderWater
+import kr.lostwar.util.nms.BoatNMSUtil.isUnderWaterAndGetBoatState
 import kr.lostwar.util.nms.NMSUtil.damage
 import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
@@ -331,7 +331,7 @@ class CarEntity(
     private var boatLastDeltaY = 0.0
     private fun updateBoatState(): BoatNMSUtil.BoatState {
         val (_, entity) = kinematicEntities.entries.first()
-        entity.entity.isUnderWater()?.let {
+        entity.entity.isUnderWaterAndGetBoatState()?.let {
             boatWaterLevel = entity.boundingBox.maxY + 0.001
             return it
         }
@@ -430,7 +430,7 @@ class CarEntity(
             floatBoat()
         }else{
             for(kinematic in kinematicEntities.values) {
-                val state = kinematic.entity.isUnderWater()
+                val state = kinematic.entity.isUnderWaterAndGetBoatState()
                 if(state == BoatNMSUtil.BoatState.IN_WATER
                     || state == BoatNMSUtil.BoatState.UNDER_WATER
                     || state == BoatNMSUtil.BoatState.UNDER_FLOWING_WATER

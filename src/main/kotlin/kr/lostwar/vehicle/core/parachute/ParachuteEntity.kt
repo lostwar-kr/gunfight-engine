@@ -9,7 +9,6 @@ import kr.lostwar.util.nms.BoatNMSUtil
 import kr.lostwar.util.nms.BoatNMSUtil.getGroundFriction
 import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevel
 import kr.lostwar.util.nms.BoatNMSUtil.getWaterLevelAbove
-import kr.lostwar.util.nms.BoatNMSUtil.isUnderWater
 import kr.lostwar.util.nms.NMSUtil.setIsOnGround
 import kr.lostwar.util.nms.NMSUtil.setPosition
 import kr.lostwar.util.nms.NMSUtil.tryCollideAndGetModifiedVelocity
