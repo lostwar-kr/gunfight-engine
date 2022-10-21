@@ -415,6 +415,8 @@ class CarEntity(
 //        console("boatState: $boatState, waterLevel: $boatWaterLevel, verticalMove: $verticalMove, upwardMove: $upwardMove, invFriction: $invFriction, velocity: ${velocity.getDisplayString()}")
     }
 
+    // 최대높이 하드코딩
+    var maxAltitudeGetter = { 324.0 }
     private fun move() {
         val entities = kinematicEntitiesSortedByZ.let {
             if(forwardSpeed >= 0) it
@@ -506,6 +508,7 @@ class CarEntity(
         }
 //        console("final velocity: ${velocity} (finalStepUp: ${finalStepUp}, finalGravity: ${finalGravity})")
         transform.position.add(velocity)
+        transform.position.y = transform.position.y.coerceAtMost(maxAltitudeGetter())
         boatLastDeltaY = velocity.y
         for((_, entity) in kinematicEntities) {
             entity.tick()
