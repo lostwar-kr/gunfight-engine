@@ -390,6 +390,18 @@ open class VehicleEntity<T : VehicleInfo>(
             DamageCause.ENTITY_ATTACK, DamageCause.ENTITY_SWEEP_ATTACK, DamageCause.ENTITY_EXPLOSION -> if(damager == null) return
         }
 
+        // 차량을 근접에서 때리려 한 경우
+        if(damager != null
+            && damager.type == EntityType.PLAYER
+            && weapon == null
+            && (cause == DamageCause.ENTITY_ATTACK || cause == DamageCause.ENTITY_SWEEP_ATTACK)
+        ) {
+            // 탑승에 성공하면 데미지 처리로 치지 않음
+            if(ride(damager as Player) >= 0) {
+                return
+            }
+        }
+
         // 탑승하고 있는 차량에 대한 피해는 지형 충돌로 인한 피해를 제외하고 무시
         if(cause != Constants.collisionDamageCause && damager?.vehicleEntityIdOrNull == this.uniqueId) {
             return
@@ -681,7 +693,6 @@ open class VehicleEntity<T : VehicleInfo>(
             }
             if(vehiclePlayer.isReseating) return
             player.fallDistance = 0f
-            if(player.isDead) return
             if(!vehicle.exit(riding, player, !isCancellable)) {
                 isCancelled = true
             }
