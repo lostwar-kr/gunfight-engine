@@ -4,6 +4,7 @@ import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
 import kr.lostwar.gun.weapon.WeaponType
+import kr.lostwar.gun.weapon.event.LandmineDetonationEvent
 import kr.lostwar.gun.weapon.event.WeaponShootEvent
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.item.ItemData
@@ -16,11 +17,13 @@ import org.bukkit.block.BlockFace
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.ArmorStand.LockType
+import org.bukkit.entity.EntityType
 import org.bukkit.event.Event
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
+import java.util.EnumSet
 import kotlin.math.abs
 
 class Grenade(
@@ -40,6 +43,7 @@ class Grenade(
             BlockFace.NORTH to EulerAngle(piHalf, 0.0, 0.0),
             BlockFace.SOUTH to EulerAngle(piHalf, 0.0, 0.0),
         )
+        private val wallFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
     }
 
     val delay: Int = getInt("delay", parent?.delay, 20)
@@ -50,7 +54,12 @@ class Grenade(
     val item: ItemData = getItemData("item", parent?.item, ItemData(Material.GREEN_DYE))!!
 
     val isSticky: Boolean = getBoolean("sticky.enable", parent?.isSticky, false)
-    val stickItem: ItemData = getItemData("item", parent?.stickItem, item)!!
+    val stickItem: ItemData = getItemData("sticky.item", parent?.stickItem, item)!!
+    val disableStickToWall: Boolean = getBoolean("sticky.disableStickToWall", parent?.disableStickToWall, false)
+
+    val isLandmine: Boolean = getBoolean("landmine.enable", parent?.isLandmine, false)
+    val landmineCanExplodeWhileNotStuck: Boolean = getBoolean("landmine.canExplodeWhileNotStuck", false)
+    val landmineRange: Double = getDouble("landmine.range", parent?.landmineRange, 0.1)
 
 
     private val onShoot = WeaponPlayerEventListener(WeaponShootEvent::class.java) { event ->
@@ -68,8 +77,14 @@ class Grenade(
             private var stuckEntity: ArmorStand? = null
             private var stuckFace: BlockFace? = null
             override fun run() {
-                if(count <= 0 || !isStuck && item.isDead) {
-                    val location = stuckEntity?.location?.add(stuckFace?.direction ?: Vector()) ?: item.location
+                if(delay > 0 && count <= 0
+                    || !isStuck && item.isDead
+                    || isLandmine && checkLandmine()
+                ) {
+                    val location = stuckEntity?.location
+                        ?.add(EquipmentSlot.HEAD.armorStandOffset) // 아머스탠드 오프셋 위치로 ...
+                        ?.add(stuckFace?.direction ?: Vector()) // 방향으로 한칸만 더
+                        ?: item.location
                     if(!item.isDead) {
                         item.remove()
                     }
@@ -81,6 +96,28 @@ class Grenade(
                 }
                 bounce()
                 --count
+            }
+            private fun checkLandmine(): Boolean {
+                val location = stuckEntity?.location
+                    ?.add(EquipmentSlot.HEAD.armorStandOffset) // 아머스탠드 오프셋 위치로 ...
+                    ?.add(stuckFace?.direction ?: Vector()) // 방향으로 한칸만 더
+                    // 바닥에 붙지 않은 상태로 터질 수 있다면 아이템 위치 사용
+                    ?: if(landmineCanExplodeWhileNotStuck) item.location else return false
+                for(entity in location.getNearbyLivingEntities(landmineRange)) {
+                    // TODO 플레이어만 기폭되도록 하드코딩
+                    if(entity.type != EntityType.PLAYER || entity.uniqueId == stuckEntity?.uniqueId) continue
+                    // 플레이어인 경우 설치한 사람은 폭발 안 되게
+                    if(entity.type == EntityType.PLAYER && entity.uniqueId == player.uniqueId) continue
+                    val landmineEvent = LandmineDetonationEvent(
+                        this@WeaponPlayerEventListener,
+                        this@Grenade,
+                        location,
+                        entity
+                    ).also { it.callEvent() }
+                    if(landmineEvent.isCancelled) continue
+                    return true
+                }
+                return false
             }
             private var lastVelocity = item.velocity
             private fun bounce() {
@@ -111,7 +148,7 @@ class Grenade(
                     if(abs(new.z) < epsilon) new.z = 0.0
                     else boundFace = if(oldZ < 0) BlockFace.SOUTH else BlockFace.NORTH
                 }
-                if(!isStuck && isSticky && boundFace != null) {
+                if(!isStuck && isSticky && boundFace != null && (!disableStickToWall || boundFace in wallFaces)) {
                     stuckFace = boundFace
                     val world = player.world
                     val location = item.location

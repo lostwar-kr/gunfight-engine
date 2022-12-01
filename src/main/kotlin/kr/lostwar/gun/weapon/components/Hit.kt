@@ -55,6 +55,12 @@ class Hit(
         PotionEffectType.POISON.createEffect(duration, poisonStrength).withParticles(false)
     }
 
+    val slowDuration: Int = getInt("entity.slow.duration", parent?.slowDuration, 0)
+    val slowStrength: Int = getInt("entity.slow.strength", parent?.slowStrength, 0)
+    private val slowEffect = slowDuration.takeIf { it > 0 }?.let { duration ->
+        PotionEffectType.SLOW.createEffect(duration, slowStrength).withParticles(false)
+    }
+
 
     fun WeaponPlayer.hitEntity(
         victim: LivingEntity,
@@ -110,6 +116,7 @@ class Hit(
 
         // fixme
         poisonEffect?.let { victim.addPotionEffect(it) }
+        slowEffect?.let { victim.addPotionEffect(it) }
 
         return event.result
     }
