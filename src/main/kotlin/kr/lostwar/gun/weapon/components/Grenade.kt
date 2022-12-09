@@ -17,13 +17,15 @@ import org.bukkit.block.BlockFace
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.ArmorStand
 import org.bukkit.entity.ArmorStand.LockType
+import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
 import org.bukkit.event.Event
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
-import java.util.EnumSet
+import java.util.*
+import kotlin.collections.HashMap
 import kotlin.math.abs
 
 class Grenade(
@@ -44,6 +46,13 @@ class Grenade(
             BlockFace.SOUTH to EulerAngle(piHalf, 0.0, 0.0),
         )
         private val wallFaces = EnumSet.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
+        val stuckGrenadeMap = HashMap<UUID, Entity>()
+
+        @JvmStatic
+        fun killAllStuckGrenade() {
+            stuckGrenadeMap.entries.filter { !it.value.isDead }.forEach { it.value.remove() }
+            stuckGrenadeMap.clear()
+        }
     }
 
     val delay: Int = getInt("delay", parent?.delay, 20)
@@ -79,6 +88,7 @@ class Grenade(
             override fun run() {
                 if(delay > 0 && count <= 0
                     || !isStuck && item.isDead
+                    || isStuck && stuckEntity?.isDead == true
                     || isLandmine && checkLandmine()
                 ) {
                     val location = stuckEntity?.location
@@ -88,7 +98,10 @@ class Grenade(
                     if(!item.isDead) {
                         item.remove()
                     }
-                    stuckEntity?.remove()
+                    stuckEntity?.let {
+                        it.remove()
+                        stuckGrenadeMap.remove(it.uniqueId)
+                    }
                     stuckEntity = null
                     this@Grenade.weapon.explosion?.apply { createExplosion(location) }
                     cancel()
@@ -163,6 +176,7 @@ class Grenade(
                         stuckEntity = world.spawn(spawnLocation, ArmorStand::class.java) { entity ->
                             entity.isMarker = true
 //                        entity.isVisible = false
+                            entity.isPersistent = false
                             entity.isInvulnerable = true
                             entity.setItem(EquipmentSlot.HEAD, item.itemStack)
                             entity.setGravity(false)
@@ -172,6 +186,7 @@ class Grenade(
                                 }
                             }
                             entity.headPose = eulerByBlockFace[boundFace] ?: EulerAngle(0.0, 0.0, 0.0)
+                            stuckGrenadeMap[entity.uniqueId] = entity
                         }
                         item.remove()
                         item.setGravity(false)
