@@ -8,11 +8,15 @@ import kr.lostwar.gun.weapon.WeaponPlayer.Companion.weaponPlayer
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponShootPrepareEvent
+import kr.lostwar.netcode.EntityNetcodeFixer
+import kr.lostwar.netcode.EntityNetcodeFixer.Companion.forceBindNetcodeFixer
+import kr.lostwar.netcode.EntityNetcodeFixer.Companion.unbindNetcodeFixer
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ExtraUtil.armorStandOffset
 import kr.lostwar.util.math.VectorUtil.ZERO
 import kr.lostwar.util.math.VectorUtil.minus
 import kr.lostwar.util.math.VectorUtil.plus
+import kr.lostwar.util.math.VectorUtil.set
 import kr.lostwar.util.math.VectorUtil.times
 import kr.lostwar.util.math.clamp
 import kr.lostwar.util.nms.NMSUtil.damage
@@ -266,6 +270,13 @@ open class VehicleEntity<T : VehicleInfo>(
         updateChildEntities()
     }
     protected open fun onEarlyTick() {}
+    private val lastPosition = transform.position.clone()
+    var onMoveBroadcast: (Entity) -> Unit = {}
+    val netcodeFixer = EntityNetcodeFixer(VehicleEntityNetcodeAdapter(this))
+        .also {
+            modelEntities.forEach { (_, entity) -> entity.forceBindNetcodeFixer(it) }
+            seatEntities.forEach { (_, entity) -> entity.forceBindNetcodeFixer(it) }
+        }
     private fun tick() {
         if(!isOnChunkLoaded()) {
             return
@@ -278,6 +289,10 @@ open class VehicleEntity<T : VehicleInfo>(
         if(isDead) return
         onTick()
         onLateTick()
+        if(livingTicks % 60 == 0 || transform.position.distanceSquared(lastPosition) > 0.0) {
+            lastPosition.set(transform.position)
+            onMoveBroadcast(primaryEntity)
+        }
         processDamage()
 
         if(removeWhenAbandoned && !storeOnUnload) {
@@ -512,8 +527,14 @@ open class VehicleEntity<T : VehicleInfo>(
         val deathEvent = VehicleEntityDeathEvent(this, damageEvent)
         deathEvent.callEvent()
 
-        modelEntities.values.forEach { it.remove() }
-        seatEntities.forEach { it.remove() }
+        modelEntities.values.forEach {
+            it.unbindNetcodeFixer()
+            it.remove()
+        }
+        seatEntities.forEach {
+            it.unbindNetcodeFixer()
+            it.remove()
+        }
 
         modelEntities.clear()
         seatEntities.clear()

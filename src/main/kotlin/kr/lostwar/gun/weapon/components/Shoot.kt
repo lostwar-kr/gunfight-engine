@@ -7,6 +7,7 @@ import kr.lostwar.gun.weapon.actions.ShootAction
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
 import kr.lostwar.gun.weapon.event.*
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
+import kr.lostwar.netcode.EntityNetcodeFixer.Companion.netcodeFixer
 import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.SoundClip
@@ -113,6 +114,10 @@ class Shoot(
     internal fun WeaponPlayer.shoot(action: ShootAction) {
         val weapon = weapon ?: return
         val prepareEvent = WeaponShootPrepareEvent(this, action, player.eyeLocation)
+            .apply {
+                player.player.vehicle?.netcodeFixer?.let { ray.add(it.offset) }
+//                    ?: player.player.netcodeFixer?.let { ray.add(it.offset) }
+            }
             .callEventOnHoldingWeapon(callBukkit = true)
         action.shoot.sound.playAt(player)
 

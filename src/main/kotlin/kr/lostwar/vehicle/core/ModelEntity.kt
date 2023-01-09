@@ -97,9 +97,10 @@ open class ModelEntity(
         info.turretInfo?.let { tickTurret(it) }
     }
 
+    private val dummyVector = Vector()
     open fun onShoot(event: WeaponShootPrepareEvent) {
         val turret = info.turretInfo ?: return
-        val shootPosition = worldTransform.localToWorld(turret.localShootPosition)
+        val shootPosition = worldTransform.localToWorld(turret.localShootPosition).add(vehicle.netcodeFixer.offset)
 
         event.ray = shootPosition.toLocation(world).setDirection(worldTransform.forward)
     }
@@ -118,7 +119,8 @@ open class ModelEntity(
             targetDirection = vehicle.transform.forward.clone()
         } else {
             val maxDistance = player.weaponPlayer.weapon?.type?.shoot?.adjustDirectionRange ?: 160.0
-            val eye = player.eyeLocation
+            val offset = dummyVector; vehicle.netcodeFixer.getOffsetNonAlloc(offset)
+            val eye = player.eyeLocation.add(offset)
             val eyeDirection = eye.direction
             val raycast = player.world.rayTrace(
                 eye,
@@ -143,7 +145,9 @@ open class ModelEntity(
                 // 안 닿았으면, 최대거리로 설정
                 ?: eye.toVector().add(eyeDirection.clone().multiply(maxDistance))
 
-            targetDirection = hitPosition.subtract(turret.localShootPosition.localToWorld(eyeDirection).add(worldTransform.position)).normalize()
+            targetDirection = hitPosition
+                .subtract(turret.localShootPosition.localToWorld(eyeDirection).add(worldTransform.position).add(offset))
+                .normalize()
 //                .run { if(y < -0.6) player.eyeLocation.direction else this }
         }
         worldTransform.forward = lerp(worldTransform.forward, targetDirection, turret.rotateLerpSpeed)

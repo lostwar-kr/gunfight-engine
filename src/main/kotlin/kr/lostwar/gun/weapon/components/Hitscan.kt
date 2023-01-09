@@ -8,6 +8,8 @@ import kr.lostwar.gun.weapon.event.WeaponHitEntityEvent
 import kr.lostwar.gun.weapon.event.WeaponHitscanShootEvent
 import kr.lostwar.gun.weapon.event.WeaponPlayerEvent.Companion.callEventOnHoldingWeapon
 import kr.lostwar.gun.weapon.event.WeaponShootEvent
+import kr.lostwar.netcode.EntityNetcodeFixer.Companion.netcodeFixer
+import kr.lostwar.netcode.EntityNetcodeFixer.Companion.useNetcodeFixer
 import kr.lostwar.util.DrawUtil
 import kr.lostwar.util.ParticleSet
 import kr.lostwar.util.math.VectorUtil.dot
@@ -16,6 +18,7 @@ import kr.lostwar.util.math.VectorUtil.normalized
 import kr.lostwar.util.math.VectorUtil.plus
 import kr.lostwar.util.nms.NMSUtil
 import kr.lostwar.util.nms.NMSUtil.rayTraceBlocksPiercing
+import kr.lostwar.util.ui.text.console
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.asVehicleEntityOrNull
 import kr.lostwar.vehicle.core.VehicleEntity.Companion.vehicleEntityIdOrNull
 import kr.lostwar.vehicle.util.ExtraUtil.getOutline
@@ -113,6 +116,7 @@ class Hitscan(
 //        GunEngine.log("entity pre-raycast:")
         // 최적화된 entity raycast
         // 전체 엔티티 검사를 딱 한 번만 함
+        val dummyVector = Vector()
         val entities = world.livingEntities.mapNotNull { target ->
             // 방향벡터와 발사위치 기준 상대 위치와 내적
             // 또한 내적값은 방향벡터 기준 거리값도 가지고있음
@@ -131,6 +135,21 @@ class Hitscan(
 
             val boundingBox = target.boundingBox
             if(boundingBox.volume <= 0.0) return@mapNotNull null
+            if(useNetcodeFixer) {
+                // 넷코드 히트박스 이동
+
+                // 1. 탑승중인 vehicle이 있으면 vehicle의 offset을 따라감.
+                // 2. 엔티티 자체의 netcodeFixer가 있으면 엔티티 자체의 offset을 따라감
+                // 3. 엔티티가 andoo 차량인 경우 차량의 offset을 따라감
+                target.vehicle?.netcodeFixer?.let {
+                    it.getOffsetNonAlloc(dummyVector)
+                    boundingBox.shift(dummyVector)
+                }?.also { console("target ${target.name}'s vehicle ${target.vehicle?.name} netcode applied") }
+                    ?: target.netcodeFixer?.let {
+                        it.getOffsetNonAlloc(dummyVector)
+                        boundingBox.shift(dummyVector)
+                    }?.also { console("target ${target.name} netcode applied") }
+            }
             val hitbox = boundingBox.expand(getRadius(dot))
             // raytrace 실패 시 히트 안 했음
             val hitResult = hitbox.rayTrace(rayOrigin, rayDirection, maximumRange) ?: return@mapNotNull null

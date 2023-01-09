@@ -85,7 +85,7 @@ class VehicleTransform(
     var eulerAngleForPose = EulerAngle.ZERO; private set
 
     // local Z
-    private var forwardDirection: Vector = VectorUtil.FORWARD
+    private var forwardDirection: Vector = Vector(0.0, 0.0, 1.0)
     var forward: Vector
         get() = forwardDirection
         set(value) {

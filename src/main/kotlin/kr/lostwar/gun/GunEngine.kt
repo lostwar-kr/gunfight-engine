@@ -9,6 +9,8 @@ import kr.lostwar.GunfightEngine.Companion.plugin
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponListener
 import kr.lostwar.gun.weapon.WeaponPlayer
+import kr.lostwar.netcode.EntityNetcodeFixer
+import kr.lostwar.netcode.NetcodeCommand
 import kr.lostwar.util.ParticleInfo
 import kr.lostwar.util.ui.text.console
 import org.bukkit.command.Command
@@ -21,9 +23,11 @@ object GunEngine : Engine("full-metal-jacket") {
     override val listeners: List<Listener> = listOf(
         WeaponListener,
         WeaponPlayer.Companion,
+        EntityNetcodeFixer,
     )
     override val commands: List<Command> = listOf(
         WeaponCommand,
+        NetcodeCommand,
     )
     override fun onLoad(reload: Boolean) {
         /*
