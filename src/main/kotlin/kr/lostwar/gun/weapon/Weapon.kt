@@ -144,7 +144,7 @@ class Weapon(
     }
 
     private val modifiedProperties = hashSetOf<WeaponProperty<*, *>>()
-    fun storeTo(item: ItemStack, dirty: Boolean = true) {
+    fun storeTo(item: ItemStack, dirty: Boolean = true, forCopy: Boolean = false) {
 //        GunEngine.log("&eweapon data saving (dirty:${dirty})")
 //        GunEngine.log("&eweapon data saving to &f${item}&e ... (dirty:${dirty})")
         if(!dirty && modifiedProperties.isEmpty()) return
@@ -161,7 +161,10 @@ class Weapon(
             // 저장
             itemContainer.set(Constants.weaponContainerKey, PersistentDataType.TAG_CONTAINER, weaponContainer)
         }
-        modifiedProperties.clear()
+        // 다른 아이템에 저장하는 용도가 아니라면
+        if(!forCopy) {
+            modifiedProperties.clear()
+        }
 //        GunEngine.log("&aweapon data successfully saved to &f${item}")
     }
 

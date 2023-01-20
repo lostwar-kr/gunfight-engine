@@ -3,8 +3,10 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.weapon.WeaponType
 import kr.lostwar.gun.weapon.WeaponComponent
 import kr.lostwar.gun.weapon.WeaponPlayerEventListener
+import kr.lostwar.gun.weapon.actions.HoldAction
 import kr.lostwar.gun.weapon.event.WeaponEndHoldingEvent
 import kr.lostwar.gun.weapon.event.WeaponStartHoldingEvent
+import kr.lostwar.util.AnimationClip
 import kr.lostwar.util.item.ItemBuilder
 import kr.lostwar.util.item.ItemData
 import kr.lostwar.util.item.ItemUtil.applyItemMeta
@@ -16,8 +18,11 @@ import kr.lostwar.util.ui.text.StringUtil.mapColored
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Material
+import org.bukkit.attribute.Attribute
+import org.bukkit.attribute.AttributeModifier
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.event.Event
+import org.bukkit.event.EventPriority
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.CrossbowMeta
@@ -42,6 +47,9 @@ class Item(
     val useCrossbowMotion: Boolean = getBoolean("useCrossbowMotion", parent?.useCrossbowMotion, false)
     val crossbowData: Int = getInt("crossbowData", itemData.data)
 
+    val holdingDuration: Int = getInt("holding.duration", parent?.holdingDuration)
+    val holdingAnimation: AnimationClip = getAnimationClip("holding.animation", parent?.holdingAnimation)
+
     val displayNameInComponent = when(textType) {
         TextType.MINI_MESSAGE -> displayName?.asMiniMessage
         TextType.LEGACY_STRING -> displayName?.colored()?.asComponent
@@ -56,6 +64,9 @@ class Item(
         displayName(displayNameInComponent)
         lore(loreInComponent)
         isUnbreakable = true
+        if(useAnimation) {
+            addAttributeModifier(Attribute.GENERIC_ATTACK_SPEED, AttributeModifier("anim", -10.0, AttributeModifier.Operation.ADD_NUMBER))
+        }
         addItemFlags(*ItemFlag.values())
     }
     val crossbow: ItemBuilder = ItemBuilder(Material.CROSSBOW, crossbowData).applyMeta<ItemBuilder, CrossbowMeta> {
@@ -73,10 +84,13 @@ class Item(
         .createEffect(Int.MAX_VALUE, 10)
         .withParticles(false).withIcon(false)
 
-    private val onStartHold = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java) { event ->
+    private val onStartHold = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, EventPriority.LOW) { event ->
         val newWeapon = event.newWeapon
+        if(newWeapon.type.item.holdingDuration > 0) {
+            newWeapon.primaryAction = HoldAction(newWeapon)
+        }
         if(newWeapon.type.item.useAnimation) {
-            player.addPotionEffect(slowDigging)
+//            player.addPotionEffect(slowDigging)
             player.addPotionEffect(fastDigging)
         }
     }
@@ -86,7 +100,7 @@ class Item(
         if(newWeapon?.type?.item?.useAnimation == true) {
             return@WeaponPlayerEventListener
         }
-        player.removePotionEffect(PotionEffectType.SLOW_DIGGING)
+//        player.removePotionEffect(PotionEffectType.SLOW_DIGGING)
         player.removePotionEffect(PotionEffectType.FAST_DIGGING)
     }
 

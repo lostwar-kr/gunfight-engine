@@ -96,7 +96,7 @@ class Ammo(
 
     // 무기 LoadAction 복구
     private val startHoldingListenerForRecoverLoadAction
-    = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.LOW) { event ->
+    = WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, priority = EventPriority.NORMAL) { event ->
         val weapon = event.weapon
 
         // 마지막에 저장된 LoadAction이 있을 경우

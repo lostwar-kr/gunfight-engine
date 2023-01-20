@@ -50,7 +50,7 @@ class WeaponType(
 //            GunEngine.log("- ${listener.clazz}")
             val list = listenerHandler
                 // 없으면 리스트 생성
-                .computeIfAbsent(listener.clazz) { ArrayList() }
+                .getOrPut(listener.clazz) { ArrayList() }
             // 리스트에 넣기
             list.add(listener as WeaponPlayerEventListener<Event>)
         }
@@ -171,6 +171,8 @@ class WeaponType(
             }
             registerWeaponFiles(folder)
             loadWeapons()
+
+
         }
 
         private fun registerWeaponFiles(folder: File) {
@@ -180,12 +182,17 @@ class WeaponType(
             val weaponFiles = arrayListOf<File>()
             while (queue.isNotEmpty()) {
                 val file = queue.poll()
+                val fileName = file.name
+                if(fileName.startsWith("-")) {
+                    GunEngine.log("skip loading ${file.path}")
+                    continue
+                }
                 if (file.isDirectory) {
                     val files = file.listFiles() ?: continue
                     queue.addAll(files)
                     continue
                 }
-                if (file.name.endsWith(".yml")) {
+                if(fileName.endsWith(".yml")) {
                     weaponFiles.add(file)
                 }
             }

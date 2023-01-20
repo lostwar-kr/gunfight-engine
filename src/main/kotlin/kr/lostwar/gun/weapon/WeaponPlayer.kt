@@ -45,9 +45,9 @@ class WeaponPlayer(
     }
     fun playAnimation(animationTask: BukkitTask?) = animationTask?.let { playingAnimations.add(it) }
     var lastAnimationFrame: AnimationFrame? = null
-    fun recoverAnimation() {
+    fun recoverAnimation(after: Long = 2) {
         val weaponType = weapon?.type ?: return
-        lastAnimationFrame?.recover(this, weaponType)
+        lastAnimationFrame?.recover(this, weaponType, after)
     }
     fun playSound(soundTask: BukkitTask?) = soundTask?.let { playingSounds.add(it) }
 
@@ -101,7 +101,7 @@ class WeaponPlayer(
         private val emptyItem = ItemStack(Material.AIR)
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
         fun PlayerItemHeldEvent.onItemHeld() {
-//            GunEngine.log("onItemHeld(${previousSlot} to ${newSlot})")
+            GunEngine.log("onItemHeld(${previousSlot} to ${newSlot})")
             val weaponPlayer = player.weaponPlayer
             weaponPlayer.updateCurrentWeapon(player.inventory.getItem(newSlot) ?: emptyItem)
         }
@@ -141,13 +141,13 @@ class WeaponPlayer(
     fun updateCurrentWeapon(newItem: ItemStack = player.inventory.itemInMainHand) {
         val oldWeapon = weapon
         val newWeapon = Weapon.takeOut(newItem)
-//        GunEngine.log("oldWeapon: ${oldWeapon}")
-//        GunEngine.log("newWeapon: ${newWeapon}")
+        GunEngine.log("oldWeapon: ${oldWeapon}")
+        GunEngine.log("newWeapon: ${newWeapon}")
 //        try { throw Exception("stacktrace") } catch(e: Exception) { e.printStackTrace() }
         if(oldWeapon != newWeapon) {
             this.weapon = newWeapon
             onChangeWeapon(oldWeapon, newWeapon, newItem)
-//            player.colorMessage("changed weapon from &8${oldWeapon}&r to &e${newWeapon}")
+            player.colorMessage("changed weapon from &8${oldWeapon}&r to &e${newWeapon}")
         }
     }
 

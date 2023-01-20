@@ -3,6 +3,7 @@ package kr.lostwar.gun.weapon.components
 import kr.lostwar.gun.GunEngine
 import kr.lostwar.gun.weapon.*
 import kr.lostwar.gun.weapon.actions.DelayAction
+import kr.lostwar.gun.weapon.actions.HoldAction
 import kr.lostwar.gun.weapon.actions.ShootAction
 import kr.lostwar.gun.weapon.components.Ammo.Companion.ammo
 import kr.lostwar.gun.weapon.event.*
@@ -21,6 +22,7 @@ import org.bukkit.Location
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.entity.LivingEntity
 import org.bukkit.event.Event
+import org.bukkit.event.EventPriority
 import org.bukkit.event.inventory.ClickType
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.util.Vector
@@ -62,7 +64,7 @@ class Shoot(
     override val listeners: List<WeaponPlayerEventListener<out Event>> = listOf(
         onClick,
         // 무기를 들었을 때
-        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java) { event ->
+        WeaponPlayerEventListener(WeaponStartHoldingEvent::class.java, EventPriority.HIGHEST) { event ->
             val weapon = event.weapon
             // 아직 action 이 아무에게도 점령당하지 않은 경우
             if(weapon.primaryAction != null) return@WeaponPlayerEventListener

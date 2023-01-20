@@ -15,8 +15,8 @@ sealed class WeaponProperty<T : Any, Z : Any>(
     fun takeOut(container: PersistentDataContainer): Boolean {
         // identifier가 없는 경우는 takeOut 실패
         val value = container[type] ?:
-        if(type.identifier) return false
-        else defaultValue
+            if(type.identifier) return false
+            else defaultValue
         this.value = value
         return true
     }
